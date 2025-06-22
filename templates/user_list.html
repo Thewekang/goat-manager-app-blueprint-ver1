@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2>User Management</h2>
+
+<a href="{{ url_for('users.manage_user') }}" class="btn btn-success mb-3">+ Add New User</a>
+
+{% if current_user.role in ['admin', 'superadmin'] %}
+  <div class="alert alert-info">
+    <h5 class="mb-2">🔒 Password Reset Requests</h5>
+    <ul>
+      {% for req in reset_requests %}
+        <li>
+          {{ req.user.username }} ({{ req.user.role }}) at {{ req.timestamp.strftime('%d-%m-%Y %H:%M') }}
+          <form method="post" action="{{ url_for('users.admin_reset_password', user_id=req.user.id, request_id=req.id) }}" class="d-inline">
+            <button class="btn btn-sm btn-outline-success">Reset Now</button>
+          </form>
+        </li>
+      {% else %}
+        <li class="text-muted">No pending reset requests.</li>
+      {% endfor %}
+    </ul>
+  </div>
+{% endif %}
+
+
+<table class="table table-bordered table-striped align-middle">
+  <thead>
+    <tr>
+      <th>Username</th>
+      <th>Full Name</th>
+      <th>Email</th>
+      <th>Phone</th>
+      <th>Role</th>
+      <th>Status</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for user in users %}
+    <tr>
+      <td>{{ user.username }}</td>
+      <td>{{ user.full_name or "-" }}</td>
+      <td>{{ user.email or "-" }}</td>
+      <td>{{ user.phone or "-" }}</td>
+      <td>{{ user.role|capitalize }}</td>
+      <td>
+        {% if user.status == "active" %}
+          <span class="badge bg-success">Active</span>
+        {% else %}
+          <span class="badge bg-secondary">Inactive</span>
+        {% endif %}
+      </td>
+      <td>
+        {% if current_user.role == "superadmin" or (current_user.role == "admin" and user.role == "worker") %}
+          <a href="{{ url_for('users.manage_user', user_id=user.id) }}" class="btn btn-sm btn-outline-primary">Edit</a>
+          <button class="btn btn-sm btn-outline-warning" onclick="resetPassword('{{ user.id }}', '{{ user.username }}')">Reset</button>
+          <form method="post" action="{{ url_for('users.toggle_user_status', user_id=user.id) }}" class="d-inline">
+            <button class="btn btn-sm btn-outline-secondary">
+              {% if user.status == "active" %}Deactivate{% else %}Activate{% endif %}
+            </button>
+          </form>
+        {% else %}
+          <span class="text-muted">Restricted</span>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<!-- Password Reset Modal -->
+<div class="modal fade" id="resetModal" tabindex="-1" aria-labelledby="resetModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-warning">
+        <h5 class="modal-title" id="resetModalLabel">Temporary Password</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body text-center">
+        <p>Temporary password for <b id="resetUsername"></b> is:</p>
+        <code id="generatedPassword" class="fs-4"></code>
+        <p class="mt-2 text-muted">Ask the user to change their password after login.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+function resetPassword(userId, username) {
+  fetch(`/users/reset/${userId}`, { method: 'POST' })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        document.getElementById('resetUsername').textContent = username;
+        document.getElementById('generatedPassword').textContent = data.temp_password;
+        new bootstrap.Modal(document.getElementById('resetModal')).show();
+      } else {
+        alert(data.error || "Failed to reset password.");
+      }
+    });
+}
+</script>
+{% endblock %}
+

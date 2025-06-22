@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Breeding Events</h2>
+<a href="{{ url_for('breeding.add_breeding') }}" class="btn btn-success mb-3">Add Breeding Event</a>
+<table class="table table-striped">
+  <thead>
+    <tr>
+      <th>Buck</th>
+      <th>Doe</th>
+      <th>Mating Start</th>
+      <th>Mating End</th>
+      <th>Status</th>
+      <th>Notes</th>
+      <th>Logged By</th>
+      <th>Logged At</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for e in events %}
+    <tr>
+      <td>{{ e.buck.tag if e.buck else "?" }}</td>
+      <td>{{ e.doe.tag if e.doe else "?" }}</td>
+      <td>{{ e.mating_start_date }}</td>
+      <td>{{ e.mating_end_date }}</td>
+      <td>{{ e.status }}</td>
+      <td>{{ e.notes or "-" }}</td>
+      <td>{{ e.created_by or '-' }}</td>
+      <td>{{ e.created_at.strftime('%d-%m-%Y %H:%M') if e.created_at else '-' }}</td>
+      <td>
+        <a href="{{ url_for('breeding.edit_breeding', event_id=e.id) }}" class="btn btn-sm btn-primary">Edit</a>
+        <form action="{{ url_for('breeding.delete_breeding', event_id=e.id) }}" method="post" style="display:inline;" onsubmit="return confirm('Delete this breeding event?');">
+          <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}
+

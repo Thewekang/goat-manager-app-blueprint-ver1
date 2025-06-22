@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Edit Vaccine Type</h2>
+<form method="post">
+  <div class="mb-2">
+    <label>Name</label>
+    <input class="form-control" name="name" value="{{ vt.name }}" required>
+  </div>
+  <div class="mb-2">
+    <label>Description</label>
+    <input class="form-control" name="description" value="{{ vt.description }}">
+  </div>
+  <div class="mb-2">
+    <label>Min Age (days)</label>
+    <input class="form-control" name="min_age_days" type="number" value="{{ vt.min_age_days }}">
+  </div>
+  <div class="mb-2">
+    <label>Booster Schedule (comma separated, e.g. 28,180)</label>
+    <input class="form-control" name="booster_schedule_days" value="{{ vt.booster_schedule_days }}">
+  </div>
+  <div class="mb-2">
+    <label>Default Frequency (days)</label>
+    <input class="form-control" name="default_frequency_days" type="number" value="{{ vt.default_frequency_days }}">
+  </div>
+  <button class="btn btn-success">Save Changes</button>
+  <a href="{{ url_for('vaccine_types') }}" class="btn btn-secondary">Cancel</a>
+</form>
+{% endblock %}

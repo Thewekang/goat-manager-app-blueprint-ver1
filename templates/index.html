@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+
+{% block title %}Home - Goat Manager{% endblock %}
+
+{% block content %}
+<div class="text-center">
+  <img src="{{ url_for('static', filename='icons/icon-192.png') }}" width="96" height="96" alt="Goat Icon" class="mb-3">
+  <h1>🐐 Welcome to Goat Manager</h1>
+  <p class="lead">Track your livestock’s health, weight, age and more.</p>
+</div>
+{% endblock %}

@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Remove Goat - {{ goat.tag }}{% endblock %}
+
+{% block content %}
+<h3>Remove Goat {{ goat.tag }}</h3>
+<form method="post">
+  <div class="mb-3">
+    <label>Reason</label>
+    <select name="reason" class="form-select" required>
+      <option value="Death">Death</option>
+      <option value="Sale">Sale</option>
+      <option value="Donation">Donation</option>
+    </select>
+  </div>
+  <div class="mb-3">
+    <label>Note</label>
+    <input type="text" name="note" class="form-control">
+  </div>
+  <div class="mb-3">
+    <label>Date</label>
+    <input type="date" name="date" class="form-control" required>
+  </div>
+  <button class="btn btn-danger">Confirm Removal</button>
+</form>
+{% endblock %}

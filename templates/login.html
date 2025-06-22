@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block title %}Login - Goat Manager{% endblock %}
+
+{% block content %}
+<h2 class="text-center mb-4">Login</h2>
+
+<div class="row justify-content-center">
+  <div class="col-md-6">
+    <form method="post" action="/login">
+      <div class="mb-3">
+        <label for="username" class="form-label">Username</label>
+        <!-- Preserve username on re-render -->
+        <input type="text" class="form-control" id="username" name="username"
+               value="{{ request.form.username or '' }}" required>
+      </div>
+      <div class="mb-3">
+        <label for="password" class="form-label">Password</label>
+        <input type="password" class="form-control" id="password" name="password" required>
+      </div>
+      <div class="d-grid">
+        <button type="submit" class="btn btn-success">Login</button>
+      </div>
+    </form>
+
+    <!-- 🔧 Request Admin Reset -->
+    <div class="mt-3 text-center">
+      <form id="resetRequestForm" method="post" action="{{ url_for('auth.request_password_reset') }}">
+        <input type="hidden" name="username" id="resetUsername">
+        <button class="btn btn-link btn-sm" type="submit">Forgot password? Request Admin Reset</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+  // Sync username field into the reset request form
+  document.getElementById("resetRequestForm").addEventListener("submit", function (e) {
+    const username = document.getElementById("username").value.trim();
+    if (!username) {
+      alert("Please enter your username before requesting a reset.");
+      e.preventDefault();
+    } else {
+      document.getElementById("resetUsername").value = username;
+    }
+  });
+</script>
+{% endblock %}

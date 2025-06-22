@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Add New Goat</h2>
+<form method="POST" class="p-3">
+
+  <div class="mb-3">
+    <label for="tag" class="form-label">Tag Number</label>
+    <input type="text" name="tag" id="tag" class="form-control" required>
+  </div>
+
+  <div class="mb-3">
+    <label for="goat_type_id" class="form-label">Type/Breed</label>
+    <select name="goat_type_id" id="goat_type_id" class="form-select" required>
+      {% for gt in goat_types %}
+        <option value="{{ gt.id }}"
+          {% if goat and goat.goat_type_id == gt.id %}selected{% endif %}
+        >{{ gt.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="mb-3">
+    <label for="sex" class="form-label">Sex</label>
+    <select name="sex" id="sex" class="form-select">
+      <option value="Male">Male</option>
+      <option value="Female">Female</option>
+      <option value="Unknown">Unknown</option>
+    </select>
+  </div>
+
+  <div class="mb-3">
+    <label for="acquisition_method" class="form-label">Acquisition Method</label>
+    <select name="acquisition_method" id="acquisition_method" class="form-select" required onchange="toggleFields()">
+      <option value="Born">Born (in farm)</option>
+      <option value="Purchased">Purchased</option>
+      <option value="Donated">Donated</option>
+      <option value="Other">Other</option>
+    </select>
+  </div>
+
+  <div class="mb-3" id="dateAcquiredGroup">
+    <label for="date_acquired" class="form-label">Date Acquired</label>
+    <input type="date" name="date_acquired" id="date_acquired" class="form-control">
+  </div>
+
+  <div class="mb-3" id="dobGroup">
+    <label for="dob" class="form-label">Date of Birth (if known)</label>
+    <input type="date" name="dob" id="dob" class="form-control">
+  </div>
+
+  <div class="mb-3" id="sourceField" style="display:none;">
+    <label for="source_name" class="form-label">Seller/Donor Name</label>
+    <input type="text" name="source_name" id="source_name" class="form-control">
+  </div>
+
+  <div class="mb-3" id="purchasePriceField" style="display:none;">
+    <label for="purchase_price" class="form-label">Purchase Price (RM)</label>
+    <input type="number" name="purchase_price" id="purchase_price" class="form-control" step="0.01" min="0">
+  </div>
+
+  <div class="mb-3">
+    <label for="age_estimate_months" class="form-label">Estimated Age at Acquisition (months)</label>
+    <input type="number" name="age_estimate_months" id="age_estimate_months" class="form-control" min="0">
+    <div class="form-text">If DOB unknown, enter estimated age in months (e.g., from seller).</div>
+  </div>
+
+  <div class="mb-3">
+    <label for="weight" class="form-label">Weight (kg)</label>
+    <input type="number" name="weight" id="weight" class="form-control" min="0" step="0.1">
+  </div>
+
+  <div class="mb-3">
+    <label for="location" class="form-label">Location/Room</label>
+    <input type="text" name="location" id="location" class="form-control" placeholder="e.g. Kandang A1">
+  </div>
+
+  <div class="mb-3">
+    <label for="notes" class="form-label">Notes</label>
+    <input type="text" name="notes" id="notes" class="form-control" placeholder="Optional notes...">
+  </div>
+
+  <button type="submit" class="btn btn-success btn-lg w-100 mt-2">Add Goat</button>
+</form>
+
+<script>
+function toggleFields() {
+  let method = document.getElementById('acquisition_method').value;
+  let sourceField = document.getElementById('sourceField');
+  let purchasePriceField = document.getElementById('purchasePriceField');
+  let dateAcquired = document.getElementById('date_acquired');
+  let dateAcquiredGroup = document.getElementById('dateAcquiredGroup');
+  let dob = document.getElementById('dob');
+  let dobGroup = document.getElementById('dobGroup');
+
+  // Show/hide Seller/Donor fields
+  sourceField.style.display = (method == 'Purchased' || method == 'Donated' || method == 'Other') ? 'block' : 'none';
+  purchasePriceField.style.display = (method == 'Purchased') ? 'block' : 'none';
+
+  // Acquisition date and DOB field logic
+  if (method === 'Born') {
+    dateAcquired.required = false;
+    dateAcquired.value = '';
+    dateAcquired.disabled = true;
+    dateAcquiredGroup.style.display = 'none';
+
+    dob.required = true;
+    dobGroup.style.display = 'block';
+  } else {
+    dateAcquired.required = true;
+    dateAcquired.disabled = false;
+    dateAcquiredGroup.style.display = 'block';
+
+    dob.required = false;
+    dobGroup.style.display = 'block'; // Still let them fill DOB if they know it
+  }
+}
+
+document.addEventListener('DOMContentLoaded', toggleFields);
+</script>
+{% endblock %}

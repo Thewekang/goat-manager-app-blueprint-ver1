@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Farm Setup</h2>
+
+<div class="card mb-4">
+  <div class="card-header">Farm Configuration</div>
+  <div class="card-body">
+    <form method="post">
+      <div class="mb-3">
+        <label class="form-label">Farm Name</label>
+        <input type="text" class="form-control" name="farm_name" value="{{ config.farm_name if config else '' }}" required>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Location</label>
+        <input type="text" class="form-control" name="location" value="{{ config.location if config else '' }}" required>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Contact Email</label>
+        <input type="email" class="form-control" name="contact_email" value="{{ config.contact_email if config else '' }}" required>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Contact Phone</label>
+        <input type="tel" class="form-control" name="contact_phone" value="{{ config.contact_phone if config else '' }}" required>
+      </div>
+      <button type="submit" class="btn btn-success">Save Changes</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

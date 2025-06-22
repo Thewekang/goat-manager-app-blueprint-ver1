@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>{{ "Edit Breeding Event" if event else "Add Breeding Event" }}</h2>
+<form method="POST" class="p-3">
+
+  <div class="mb-3">
+    <label for="buck_id" class="form-label">Buck (Male)</label>
+    <select name="buck_id" id="buck_id" class="form-select" required>
+      <option value="">Select Buck</option>
+      {% for buck in bucks %}
+        <option value="{{ buck.id }}"
+          {% if (event and buck.id == event.buck_id) %}selected{% endif %}>
+          {{ buck.tag }} ({{ buck.goat_type.name if buck.goat_type else '-' }})
+        </option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="mb-3">
+    <label for="doe_id" class="form-label">Doe (Female)</label>
+    <select name="doe_id" id="doe_id" class="form-select" required>
+      <option value="">Select Doe</option>
+      {% for doe in does %}
+        <option value="{{ doe.id }}"
+          {% if (event and doe.id == event.doe_id) %}selected{% endif %}>
+          {{ doe.tag }} ({{ doe.goat_type.name if doe.goat_type else '-' }})
+        </option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="mb-3">
+    <label for="mating_start_date" class="form-label">Mating Start Date</label>
+    <input type="date" name="mating_start_date" id="mating_start_date" class="form-control"
+           value="{{ event.mating_start_date if event else today }}" required>
+  </div>
+
+  <div class="mb-3">
+    <label for="mating_end_date" class="form-label">Mating End Date</label>
+    <input type="date" name="mating_end_date" id="mating_end_date" class="form-control"
+           value="{{ event.mating_end_date if event else default_end_date }}">
+    <div class="form-text">Default is 2 days after start; edit if needed.</div>
+  </div>
+
+  <div class="mb-3">
+    <label for="notes" class="form-label">Notes</label>
+    <input type="text" name="notes" id="notes" class="form-control"
+           placeholder="Optional notes..." value="{{ event.notes if event else '' }}">
+  </div>
+
+  <button type="submit" class="btn btn-success w-100 mt-2">
+    {{ "Save Changes" if event else "Add Event" }}
+  </button>
+</form>
+{% endblock %}

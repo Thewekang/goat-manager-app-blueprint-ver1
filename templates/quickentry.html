@@ -1,0 +1,274 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>📝 Quick Entry</h2>
+
+<form method="get" class="row g-2 mb-3">
+  <div class="col-auto">
+    <select name="location" class="form-select" onchange="this.form.submit()">
+      <option value="">All Locations</option>
+      {% for loc in all_locations %}
+        <option value="{{ loc }}" {% if selected_location == loc %}selected{% endif %}>{{ loc }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-auto">
+    <select name="goat_type" class="form-select" onchange="this.form.submit()">
+      <option value="">All Types</option>
+      {% for t in all_types %}
+        <option value="{{ t.id }}" {% if selected_type == t.id|string %}selected{% endif %}>{{ t.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+</form>
+<ul class="nav nav-tabs mb-3" id="quickEntryTabs" role="tablist">
+  <li class="nav-item" role="presentation">
+    <button class="nav-link active" id="weight-tab" data-bs-toggle="tab" data-bs-target="#weight" type="button" role="tab">Add Weight</button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link" id="sick-tab" data-bs-toggle="tab" data-bs-target="#sick" type="button" role="tab">Log Sickness</button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link" id="vax-tab" data-bs-toggle="tab" data-bs-target="#vax" type="button" role="tab">Record Vaccination</button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link" id="preg-tab" data-bs-toggle="tab" data-bs-target="#preg" type="button" role="tab">Mark Pregnancy</button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link" id="breed-tab" data-bs-toggle="tab" data-bs-target="#breed" type="button" role="tab">Add Breeding Event</button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link" id="addgoat-tab" data-bs-toggle="tab" data-bs-target="#addgoat" type="button" role="tab">Add Goat</button>
+  </li>
+</ul>
+  
+<div class="tab-content">
+  <!-- Add Weight Tab -->
+  <div class="tab-pane fade show active" id="weight" role="tabpanel">
+    <form id="weight-form" method="post" class="mb-4">
+      <input type="hidden" name="action" value="add_weight">
+      <table class="table table-bordered align-middle">
+        <thead>
+          <tr><th>Goat Tag</th><th>Weight (kg)</th><th>Date</th></tr>
+        </thead>
+        <tbody>
+          {% for goat in goats %}
+          <tr>
+            <td>{{ goat.tag }}</td>
+            <td>
+              <input type="number" step="0.01" name="weight_{{ goat.id }}" class="form-control" placeholder="e.g. 21.5">
+            </td>
+            <td>
+              <input type="date" name="date_{{ goat.id }}" class="form-control" value="{{ today }}">
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <button type="submit" class="btn btn-success">Save Weights</button>
+    </form>
+  </div>
+  <!-- Vaccination Tab -->
+  <div class="tab-pane fade" id="vax" role="tabpanel">
+    <form id="vaccine-form" method="post" class="mb-4">
+      <input type="hidden" name="action" value="batch_vaccine">
+      <div class="mb-2">
+        <label for="vaccine_type_id" class="form-label">Vaccine</label>
+        <select name="vaccine_type_id" class="form-select" required>
+          {% for vt in vaccine_types %}
+          <option value="{{ vt.id }}">{{ vt.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="mb-2">
+        <label for="actual_date_given" class="form-label">Date Given</label>
+        <input type="date" name="actual_date_given" class="form-control" value="{{ today }}" required>
+      </div>
+      <div class="mb-2">
+        <label class="form-label">Select Goats:</label>
+        <div class="row row-cols-2 row-cols-md-4 g-1">
+          {% for goat in goats %}
+          <div class="col">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="goat_ids" value="{{ goat.id }}" id="goat-{{ goat.id }}">
+              <label class="form-check-label" for="goat-{{ goat.id }}">{{ goat.tag }}</label>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="mb-2">
+        <label class="form-label">Notes (optional)</label>
+        <input type="text" class="form-control" name="notes">
+      </div>
+      <div class="mb-2">
+        <label class="form-label">Given By</label>
+        <input type="text" name="given_by" class="form-control" required maxlength="50" value="{{ session.username }}">
+        <div class="form-text">Who physically administered the vaccine (can be changed if different from your login).</div>
+      </div>
+      <button type="submit" class="btn btn-primary">Record Vaccinations</button>
+    </form>
+  </div>
+  <!-- Sickness Log Tab -->
+  <div class="tab-pane fade" id="sick" role="tabpanel">
+    <form id="sick-form" method="post" enctype="multipart/form-data" class="mb-4">
+      <input type="hidden" name="action" value="add_sickness">
+      <div class="mb-2">
+        <label for="goat_id" class="form-label">Goat</label>
+        <select name="goat_id" class="form-select" required>
+          {% for goat in goats %}
+          <option value="{{ goat.id }}">{{ goat.tag }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="mb-2">
+        <label class="form-label">Sickness</label>
+        <input type="text" class="form-control" name="sickness" required>
+      </div>
+      <div class="mb-2">
+        <label class="form-label">Medicine</label>
+        <input type="text" class="form-control" name="medicine" required>
+      </div>
+      <div class="mb-2">
+        <label class="form-label">Date</label>
+        <input type="date" class="form-control" name="date" value="{{ today }}" required>
+      </div>
+      <div class="mb-2">
+        <label>Photo(s)</label>
+        <input type="file" class="form-control" name="photos" accept="image/*" multiple capture="environment">
+        <div class="form-text">You can take/upload several photos.</div>
+      </div>
+      <button type="submit" class="btn btn-danger">Record Sickness</button>
+    </form>
+  </div>
+
+  <!-- Pregnancy Tab -->
+  <div class="tab-pane fade" id="preg" role="tabpanel">
+    <form method="post" class="mb-4">
+      <input type="hidden" name="action" value="mark_pregnancy">
+      <div class="mb-2">
+        <label class="form-label">Select Goats to Mark as Pregnant:</label>
+        <div class="row row-cols-2 row-cols-md-4 g-1">
+          {% for goat in goats if goat.sex == 'Female' %}
+          <div class="col">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="pregnant_goat_ids"
+                    value="{{ goat.id }}" id="preg-{{ goat.id }}" {% if goat.is_pregnant %}checked{% endif %}>
+              <label class="form-check-label" for="preg-{{ goat.id }}">{{ goat.tag }}</label>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        <div class="form-text">Checked goats will be marked as pregnant. Unchecked will be marked as not pregnant.</div>
+      </div>
+      <button type="submit" class="btn btn-info">Save Pregnancy Status</button>
+    </form>
+  </div>
+
+  <!-- Add Breeding Event Tab -->
+  <div class="tab-pane fade" id="breed" role="tabpanel">
+    <form method="post" class="mb-4">
+      <input type="hidden" name="action" value="add_breeding">
+      <div class="mb-2">
+        <label class="form-label">Doe (Female)</label>
+        <select name="doe_id" class="form-select" required>
+          {% for goat in goats if goat.sex == 'Female' %}
+          <option value="{{ goat.id }}">{{ goat.tag }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="mb-2">
+        <label class="form-label">Buck (Male)</label>
+        <select name="buck_id" class="form-select" required>
+          {% for goat in goats if goat.sex == 'Male' %}
+          <option value="{{ goat.id }}">{{ goat.tag }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="mb-2">
+        <label class="form-label">Mating Start Date</label>
+        <input type="date" name="mating_start_date" class="form-control" required>
+      </div>
+      <div class="mb-2">
+        <label class="form-label">Mating End Date</label>
+        <input type="date" name="mating_end_date" class="form-control">
+      </div>
+      <div class="mb-2">
+        <label class="form-label">Notes</label>
+        <input type="text" name="notes" class="form-control">
+      </div>
+      <button type="submit" class="btn btn-primary">Add Breeding Event</button>
+    </form>
+  </div>
+
+  <!-- Add Goat Tab -->
+  <div class="tab-pane fade" id="addgoat" role="tabpanel">
+    <form method="post" class="mb-4">
+      <input type="hidden" name="action" value="add_goat">
+      <div class="mb-2">
+        <label class="form-label">Goat Tag</label>
+        <input type="text" name="goat_tag" class="form-control" required>
+      </div>
+      <div class="mb-2">
+        <label class="form-label">Type/Breed</label>
+        <select name="goat_type_id" class="form-select" required>
+          {% for t in all_types %}
+          <option value="{{ t.id }}">{{ t.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="mb-2">
+        <label class="form-label">Sex</label>
+        <select name="sex" class="form-select" required>
+          <option value="Male">Male</option>
+          <option value="Female">Female</option>
+        </select>
+      </div>
+      <div class="mb-2">
+        <label class="form-label">Date of Birth</label>
+        <input type="date" name="dob" class="form-control">
+      </div>
+      <div class="mb-2">
+        <label class="form-label">Date Acquired</label>
+        <input type="date" name="date_acquired" class="form-control">
+      </div>
+      <div class="mb-2">
+        <label class="form-label">Location</label>
+        <input type="text" name="location" class="form-control">
+      </div>
+      <div class="mb-2">
+        <label class="form-label">Notes</label>
+        <input type="text" name="notes" class="form-control">
+      </div>
+      <button type="submit" class="btn btn-success">Add Goat</button>
+    </form>
+  </div>
+
+</div>
+
+{% block scripts %}
+{{ super() }}
+<script>
+function ajaxSubmit(formId, successMsg) {
+  const form = document.getElementById(formId);
+  if (!form) return;
+  form.onsubmit = function(e) {
+    e.preventDefault();
+    const data = new FormData(form);
+    fetch("", { // POST to same route
+      method: "POST",
+      body: data
+    })
+    .then(res => res.text())
+    .then(html => {
+      document.body.innerHTML = html; // Simple: replace page with updated content
+      // Or, use a more advanced reload/DOM partial replacement
+    })
+    .catch(() => alert("Server error!"));
+  }
+}
+ajaxSubmit("weight-form", "Weights saved!");
+ajaxSubmit("vaccine-form", "Vaccination(s) recorded!");
+ajaxSubmit("sick-form", "Sickness logged!");
+</script>
+{% endblock %}
+{% endblock %}

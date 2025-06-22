@@ -1,0 +1,65 @@
+<div>
+  <div class="mb-2">
+    <label>Tag</label>
+    <input type="text" class="form-control" name="tag" value="{{ goat.tag }}" required>
+  </div>
+  <div class="mb-2">
+    <label>Type/Breed</label>
+    <select name="goat_type_id" class="form-select" required>
+      {% for gt in goat_types %}
+      <option value="{{ gt.id }}" {% if goat.goat_type_id == gt.id %}selected{% endif %}>{{ gt.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="mb-2">
+    <label>Sex</label>
+    <select name="sex" class="form-select" required>
+      <option value="Male" {% if goat.sex == 'Male' %}selected{% endif %}>Male</option>
+      <option value="Female" {% if goat.sex == 'Female' %}selected{% endif %}>Female</option>
+    </select>
+  </div>
+  <div class="mb-2">
+    <label>Date of Birth</label>
+    <input type="date" class="form-control" name="dob" value="{{ goat.dob or '' }}">
+  </div>
+  <div class="mb-2">
+    <label>Date Acquired</label>
+    <input type="date" class="form-control" name="date_acquired" value="{{ goat.date_acquired or '' }}">
+  </div>
+  <div class="mb-2">
+    <label>Acquisition Method</label>
+    <select name="acquisition_method" class="form-select">
+      <option value="Born" {% if goat.acquisition_method == 'Born' %}selected{% endif %}>Born</option>
+      <option value="Purchased" {% if goat.acquisition_method == 'Purchased' %}selected{% endif %}>Purchased</option>
+      <option value="Donated" {% if goat.acquisition_method == 'Donated' %}selected{% endif %}>Donated</option>
+    </select>
+  </div>
+  <div class="mb-2">
+    <label>Source/Seller</label>
+    <input type="text" class="form-control" name="source_name" value="{{ goat.source_name or '' }}">
+  </div>
+  <div class="mb-2">
+    <label>Purchase Price (RM)</label>
+    <input type="number" step="0.01" class="form-control" name="purchase_price" value="{{ goat.purchase_price or '' }}">
+  </div>
+  <div class="mb-2">
+    <label>Estimated Age at Acquisition (months)</label>
+    <input type="number" class="form-control" name="age_estimate_months" value="{{ goat.age_estimate_months or '' }}">
+  </div>
+  <div class="mb-2">
+    <label>Weight (kg)</label>
+    <input type="number" step="0.01" class="form-control" name="weight" value="{{ goat.weight or '' }}">
+  </div>
+  <div class="mb-2">
+    <label>Location</label>
+    <input type="text" class="form-control" name="location" value="{{ goat.location or '' }}">
+  </div>
+  <div class="mb-2">
+    <label>Notes</label>
+    <textarea class="form-control" name="notes">{{ goat.notes or '' }}</textarea>
+  </div>
+  <div class="form-check mb-2">
+    <input class="form-check-input" type="checkbox" name="is_pregnant" value="1" id="pregnantCheck" {% if goat.is_pregnant %}checked{% endif %}>
+    <label class="form-check-label" for="pregnantCheck">Pregnant</label>
+  </div>
+</div>

@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block content %}
+<h2 class="mb-4">Goat Register (Traceability)</h2>
+<div class="mb-3 d-flex gap-2 flex-wrap">
+  <a href="{{ url_for('dashboard.home') }}" class="btn btn-secondary">Back to Dashboard</a>
+  <a href="{{ url_for('reports.export_goat_register_csv') }}" class="btn btn-outline-success">Export CSV</a>
+  <a href="{{ url_for('reports.export_goat_register_pdf') }}" class="btn btn-outline-danger">Export PDF</a>
+</div>
+<table class="table table-bordered table-hover table-sm align-middle">
+  <thead class="table-info">
+    <tr>
+      <th>Tag</th>
+      <th>Type</th>
+      <th>Sex</th>
+      <th>DOB</th>
+      <th>Date Acquired</th>
+      <th>Acq. Method</th>
+      <th>Source</th>
+      <th>Weight (kg)</th>
+      <th>Status</th>
+      <th>Breeding</th>
+      <th>Sickness</th>
+      <th>Vaccinations</th>
+      <th>Removed?</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for goat in goats %}
+      <tr>
+        <td>
+          <a href="{{ url_for('goats.goat_detail', tag=goat.tag) }}">{{ goat.tag }}</a>
+        </td>
+        <td>{{ goat.goat_type.name if goat.goat_type else "-" }}</td>
+        <td>{{ goat.sex or "-" }}</td>
+        <td>{{ goat.dob or "-" }}</td>
+        <td>{{ goat.date_acquired or "-" }}</td>
+        <td>{{ goat.acquisition_method or "-" }}</td>
+        <td>{{ goat.source_name or "-" }}</td>
+        <td>{{ goat.weight or "-" }}</td>
+        <td>
+          {% if goat.status != "active" %}
+            <span class="badge bg-danger">Removed</span>
+          {% else %}
+            <span class="badge bg-success">Active</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if goat.breedings_as_doe or goat.breedings_as_buck %}
+            {{ (goat.breedings_as_doe|length) + (goat.breedings_as_buck|length) }} event(s)
+          {% else %}-{% endif %}
+        </td>
+        <td>
+          {% if goat.sickness_history %}
+            {{ goat.sickness_history|length }} case(s)
+          {% else %}-{% endif %}
+        </td>
+        <td>
+          {% if goat.vaccination_events %}
+            {{ goat.vaccination_events|length }} record(s)
+          {% else %}-{% endif %}
+        </td>
+        <td>
+          {% if goat.status != "active" %}
+            Yes
+          {% else %}
+            No
+          {% endif %}
+        </td>
+      </tr>
+    {% else %}
+      <tr><td colspan="13" class="text-muted text-center">No goats found.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

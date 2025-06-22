@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Mark Vaccination as Done</h2>
+<div class="card mb-3">
+  <div class="card-body">
+    <h5>Goat: <b>{{ goat.tag }}</b></h5>
+    <h6>Vaccine: <b>{{ vt.name }}</b></h6>
+    <form method="post">
+      <div class="mb-3">
+        <label>Scheduled Date</label>
+        <input type="date" name="scheduled_date" class="form-control" value="{{ today }}">
+      </div>
+      <div class="mb-3">
+        <label>Actual Date Given (leave empty if not done yet)</label>
+        <input type="date" name="actual_date_given" class="form-control">
+        <div class="form-text">If vaccination is complete, fill in the date. Otherwise, leave blank to schedule.</div>
+      </div>
+      <div class="mb-3">
+        <label>Notes</label>
+        <input type="text" name="notes" class="form-control">
+      </div>
+      <button class="btn btn-success" type="submit">Save</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

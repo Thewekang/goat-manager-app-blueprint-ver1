@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Send {{ report_type }} Report via Email</h2>
+<form action="{{ action_url }}" method="post">
+  <div class="mb-3">
+    <label for="recipient" class="form-label">Recipient Email</label>
+    <input type="email" class="form-control" id="recipient" name="recipient" required>
+  </div>
+  <button type="submit" class="btn btn-primary">Send Email</button>
+  <a href="{{ url_for('reports.report_vax_overdue') }}" class="btn btn-secondary">Cancel</a>
+</form>
+{% endblock %}

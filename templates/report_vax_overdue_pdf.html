@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2 class="mb-4">Overdue Vaccination Report</h2>
+<div class="mb-3 d-flex flex-wrap gap-2">
+  <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">Back to Dashboard</a>
+  <a href="{{ url_for('export_vax_overdue_csv') }}" class="btn btn-outline-success">Export CSV</a>
+  <a href="{{ url_for('export_vax_overdue_pdf') }}" class="btn btn-outline-danger">Export PDF</a>
+  <a href="{{ url_for('send_vax_overdue_email') }}" class="btn btn-outline-primary">Send to Vet</a>
+</div>
+
+<div class="card mb-4">
+  <div class="card-body">
+    <table class="table table-bordered table-hover align-middle">
+      <thead class="table-success">
+        <tr>
+          <th>Goat Tag</th>
+          <th>Type</th>
+          <th>Vaccine</th>
+          <th>Last Given</th>
+          <th>Next Due</th>
+          <th>Days Overdue</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for entry in overdue_list %}
+        <tr>
+          <td>
+            <a href="{{ url_for('goat_detail', tag=entry.goat.tag) }}" class="fw-bold">{{ entry.goat.tag }}</a>
+          </td>
+          <td>{{ entry.goat.goat_type.name if entry.goat.goat_type else "-" }}</td>
+          <td>{{ entry.vaccine.name }}</td>
+          <td>{{ entry.last_given or "Never" }}</td>
+          <td>{{ entry.due_date.strftime('%d-%m-%Y') }}</td>
+          <td>{{ entry.days_overdue }}</td>
+          <td>
+            <span class="badge bg-danger">Overdue</span>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="7" class="text-center text-muted">No overdue vaccinations at this time.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="alert alert-info">
+  <b>Tip:</b> Use the export buttons above to download or send this report for compliance/audit purposes.
+</div>
+
+{% endblock %}

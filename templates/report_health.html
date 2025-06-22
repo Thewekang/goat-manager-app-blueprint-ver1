@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block content %}
+<h2 class="mb-4">Sickness & Mortality Report</h2>
+<div class="mb-3 d-flex gap-2 flex-wrap">
+  <a href="{{ url_for('dashboard.home') }}" class="btn btn-secondary">Back to Dashboard</a>
+  <a href="{{ url_for('reports.export_health_csv') }}" class="btn btn-outline-success">Export CSV</a>
+  <a href="{{ url_for('reports.export_health_pdf') }}" class="btn btn-outline-danger">Export PDF</a>
+  <a href="{{ url_for('reports.send_health_email') }}" class="btn btn-outline-primary">Send to Vet</a>
+</div>
+<h4>Sick Goats (Active Cases)</h4>
+<table class="table table-bordered align-middle">
+  <thead class="table-warning">
+    <tr>
+      <th>Goat Tag</th>
+      <th>Date</th>
+      <th>Sickness</th>
+      <th>Medicine</th>
+      <th>Notes</th>
+      <th>Photos</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for log in sick_logs %}
+      <tr>
+        <td><a href="{{ url_for('goats.goat_detail', tag=log.goat.tag) }}">{{ log.goat.tag }}</a></td>
+        <td>{{ log.date }}</td>
+        <td>{{ log.sickness }}</td>
+        <td>{{ log.medicine }}</td>
+        <td>{{ log.notes or "-" }}</td>
+        <td>
+          {% if log.photos %}
+            {% for photo in log.photos %}
+              <img src="{{ '/' ~ photo.image_path }}" style="max-width:60px;max-height:60px;border-radius:6px;">
+            {% endfor %}
+          {% else %}
+            <span class="text-muted">No photo</span>
+          {% endif %}
+        </td>
+      </tr>
+    {% else %}
+      <tr><td colspan="6" class="text-muted text-center">No sick goats at this time.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+<hr>
+<h4>Removals / Deaths</h4>
+<table class="table table-bordered align-middle">
+  <thead class="table-secondary">
+    <tr>
+      <th>Goat Tag</th>
+      <th>Date</th>
+      <th>Reason</th>
+      <th>Notes</th>
+      <th>Certificate</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for r in removals %}
+      <tr>
+        <td><a href="{{ url_for('goats.goat_detail', tag=r.goat.tag) }}">{{ r.goat.tag }}</a></td>
+        <td>{{ r.date }}</td>
+        <td>{{ r.reason or "-" }}</td>
+        <td>{{ r.notes or "-" }}</td>
+        <td>
+          {% if r.certificate_path %}
+            <a href="{{ '/' ~ r.certificate_path }}" target="_blank">View Certificate</a>
+          {% else %}
+            <span class="text-muted">-</span>
+          {% endif %}
+        </td>
+      </tr>
+    {% else %}
+      <tr><td colspan="5" class="text-muted text-center">No removals/deaths found.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

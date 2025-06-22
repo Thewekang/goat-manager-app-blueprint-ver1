@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Edit Sickness Log</h2>
+<form method="post">
+  <div class="mb-2">
+    <label>Goat</label>
+    <select name="goat_id" class="form-select" required>
+      {% for goat in goats %}
+        <option value="{{ goat.id }}" {% if goat.id == log.goat_id %}selected{% endif %}>{{ goat.tag }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="mb-2">
+    <label>Sickness</label>
+    <input type="text" class="form-control" name="sickness" value="{{ log.sickness }}" required>
+  </div>
+  <div class="mb-2">
+    <label>Medicine</label>
+    <input type="text" class="form-control" name="medicine" value="{{ log.medicine }}" required>
+  </div>
+  <div class="mb-2">
+    <label>Date</label>
+    <input type="date" class="form-control" name="date" value="{{ log.date }}" required>
+  </div>
+  <button type="submit" class="btn btn-success">Save Changes</button>
+  <a href="{{ url_for('sickness.sick_log') }}" class="btn btn-secondary">Cancel</a>
+</form>
+{% endblock %}

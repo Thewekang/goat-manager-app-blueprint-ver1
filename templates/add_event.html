@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Add Farm Event</h2>
+<form method="post" class="mb-3">
+  <div class="mb-2">
+    <label class="form-label">Event Title</label>
+    <input type="text" name="title" class="form-control" required>
+  </div>
+  <div class="mb-2">
+    <label class="form-label">Event Date</label>
+    <input type="date" name="event_date" class="form-control" required>
+  </div>
+  <div class="mb-2">
+    <label class="form-label">Category</label>
+    <select name="category" class="form-select" required>
+      <option value="Vaccination">Vaccination</option>
+      <option value="Mating">Mating</option>
+      <option value="Pregnancy Check">Pregnancy Check</option>
+      <option value="Reminder">Other Reminder</option>
+    </select>
+  </div>
+  <div class="mb-2">
+  <label class="form-label">Recurrence</label>
+  <select name="recurrence" class="form-select">
+    <option value="">None</option>
+    <option value="daily">Daily</option>
+    <option value="weekly">Weekly</option>
+    <option value="monthly">Monthly</option>
+  </select>
+</div>
+  <div class="mb-2">
+    <label class="form-label">Notes</label>
+    <textarea name="notes" class="form-control"></textarea>
+  </div>
+  <button class="btn btn-success">Add Event</button>
+  <a href="{{ url_for('calendar') }}" class="btn btn-secondary">Cancel</a>
+</form>
+{% endblock %}

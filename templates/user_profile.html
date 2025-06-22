@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2>My Profile</h2>
+
+<form method="POST" action="{{ url_for('user_profile') }}" class="p-3">
+  <div class="mb-3">
+    <label for="username" class="form-label">Username</label>
+    <input type="text" class="form-control" value="{{ current_user.username }}" readonly>
+  </div>
+
+  <div class="mb-3">
+    <label for="full_name" class="form-label">Full Name</label>
+    <input type="text" name="full_name" class="form-control" value="{{ current_user.full_name or '' }}">
+  </div>
+
+  <div class="mb-3">
+    <label for="email" class="form-label">Email</label>
+    <input type="email" name="email" class="form-control" value="{{ current_user.email or '' }}">
+  </div>
+
+  <div class="mb-3">
+    <label for="phone" class="form-label">Phone</label>
+    <input type="text" name="phone" class="form-control" value="{{ current_user.phone or '' }}">
+  </div>
+
+  <button type="submit" class="btn btn-success">Update Profile</button>
+</form>
+
+<hr>
+
+<h3>Change Password</h3>
+
+<form method="POST" action="{{ url_for('change_password') }}" class="p-3">
+  <div class="mb-3">
+    <label for="current_password" class="form-label">Current Password</label>
+    <input type="password" name="current_password" class="form-control" required>
+  </div>
+
+  <div class="mb-3">
+    <label for="new_password" class="form-label">New Password</label>
+    <input type="password" name="new_password" class="form-control" required>
+  </div>
+
+  <button type="submit" class="btn btn-primary">Change Password</button>
+</form>
+
+{% endblock %}

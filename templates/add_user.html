@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2>{{ "Edit" if user else "Add" }} User</h2>
+
+<form method="POST" class="p-3">
+  <div class="mb-3">
+    <label for="username" class="form-label">Username</label>
+    <input type="text" name="username" id="username" class="form-control" value="{{ user.username if user else '' }}" {% if user %}readonly{% endif %} required>
+  </div>
+
+  <div class="mb-3">
+    <label for="full_name" class="form-label">Full Name</label>
+    <input type="text" name="full_name" class="form-control" value="{{ user.full_name if user else '' }}">
+  </div>
+
+  <div class="mb-3">
+    <label for="email" class="form-label">Email</label>
+    <input type="email" name="email" class="form-control" value="{{ user.email if user else '' }}">
+  </div>
+
+  <div class="mb-3">
+    <label for="phone" class="form-label">Phone</label>
+    <input type="text" name="phone" class="form-control" value="{{ user.phone if user else '' }}">
+  </div>
+
+  <div class="mb-3">
+    <label for="role" class="form-label">Role</label>
+    <select name="role" class="form-select" {% if current_user.role == "admin" %}disabled{% endif %}>
+      <option value="worker" {% if user and user.role == "worker" %}selected{% endif %}>Worker</option>
+      {% if current_user.role == "superadmin" %}
+        <option value="admin" {% if user and user.role == "admin" %}selected{% endif %}>Admin</option>
+      {% endif %}
+    </select>
+  </div>
+
+  {% if not user %}
+  <div class="mb-3">
+    <label for="password" class="form-label">Initial Password</label>
+    <input type="text" name="password" class="form-control" placeholder="Leave blank to auto-generate">
+  </div>
+  {% endif %}
+
+  <div class="form-check mb-3">
+    <input class="form-check-input" type="checkbox" name="status" id="status" {% if not user or user.status == "active" %}checked{% endif %}>
+    <label class="form-check-label" for="status">Active</label>
+  </div>
+
+  <button type="submit" class="btn btn-success">Save</button>
+  <a href="{{ url_for('users.user_list') }}" class="btn btn-secondary">Cancel</a>
+</form>
+
+{% endblock %}

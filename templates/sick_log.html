@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Sickness Log</h2>
+<!-- Filters/Search -->
+<form method="get" class="row g-2 align-items-end mb-3">
+  <div class="col-auto">
+    <label class="form-label mb-0">Goat</label>
+    <select name="goat_tag" class="form-select form-select-sm">
+      <option value="">All</option>
+      {% for goat in goats %}
+        <option value="{{ goat.tag }}" {% if goat_tag == goat.tag %}selected{% endif %}>{{ goat.tag }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-auto">
+    <label class="form-label mb-0">Keyword</label>
+    <input type="text" name="keyword" class="form-control form-control-sm" value="{{ keyword }}">
+  </div>
+  <div class="col-auto">
+    <label class="form-label mb-0">From</label>
+    <input type="date" name="date_from" class="form-control form-control-sm" value="{{ date_from }}">
+  </div>
+  <div class="col-auto">
+    <label class="form-label mb-0">To</label>
+    <input type="date" name="date_to" class="form-control form-control-sm" value="{{ date_to }}">
+  </div>
+  <div class="col-auto">
+    <button class="btn btn-sm btn-outline-success" type="submit">Filter</button>
+    <a href="{{ url_for('sickness.sick_log') }}" class="btn btn-sm btn-outline-secondary">Reset</a>
+  </div>
+</form>
+
+<form method="post" action="{{ url_for('sickness.batch_delete_sick_log') }}">
+<table class="table table-bordered table-striped align-middle">
+  <thead>
+    <tr>
+      <th><input type="checkbox" id="selectAll"></th>
+      <th>Date</th>
+      <th>Goat</th>
+      <th>Sickness</th>
+      <th>Medicine</th>
+      <th>Logged By</th>
+      <th>Logged At</th>
+      <th>Photo</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for log in logs %}
+    <tr>
+      <td>
+        <input type="checkbox" name="selected_logs" value="{{ log.id }}">
+      </td>
+      <td>{{ log.date }}</td>
+      <td>
+        {% if log.goat %}
+          <a href="{{ url_for('goats.goat_detail', tag=log.goat.tag) }}">{{ log.goat.tag }}</a>
+        {% else %}
+          <span class="text-muted">-</span>
+        {% endif %}
+      </td>
+      <td>{{ log.sickness }}</td>
+      <td>{{ log.medicine }}</td>
+      <td>{{ log.created_by or "-" }}</td>
+      <td>
+        {{ log.created_at.strftime('%d-%m-%Y %H:%M') if log.created_at else '-' }}
+      </td>
+      <td>
+        {% if log.photos %}
+          <div class="d-flex flex-wrap gap-1">
+            {% for photo in log.photos %}
+              <img src="{{ '/' ~ photo.image_path }}"
+                  alt="Sick photo"
+                  class="photo-thumb-img"
+                  style="max-width:60px;max-height:60px;border-radius:8px;cursor:pointer"
+                  data-bs-toggle="modal"
+                  data-bs-target="#imgModal"
+                  data-img="{{ '/' ~ photo.image_path }}"
+                  data-photo-id="{{ photo.id }}">
+            {% endfor %}
+          </div>
+        {% else %}
+          <span class="text-muted">No photo</span>
+        {% endif %}
+      </td>
+      <td>
+        <a href="{{ url_for('sickness.edit_sick_log', log_id=log.id) }}" class="btn btn-sm btn-outline-primary">Edit</a>
+        <form method="post" action="{{ url_for('sickness.delete_sick_log', log_id=log.id) }}" style="display:inline" onsubmit="return confirm('Delete this log?');">
+          <button class="btn btn-sm btn-outline-danger" type="submit">Delete</button>
+        </form>
+      </td>
+    </tr>
+    {% else %}
+    <tr>
+      <td colspan="9" class="text-muted">No sickness logs recorded yet.</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+<button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Delete selected logs?')">Delete Selected</button>
+</form>
+
+<a href="{{ url_for('dashboard.quickentry') }}" class="btn btn-secondary mt-2">Back to Quick Entry</a>
+
+<!-- Modal for image preview -->
+<div class="modal fade" id="imgModal" tabindex="-1" aria-labelledby="imgModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="imgModalLabel">Sickness Photo</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body text-center">
+        <img id="modalImg" src="" alt="Preview" style="max-width:100%;max-height:70vh;border-radius:12px;">
+        <form id="deletePhotoForm" method="post" action="" class="mt-3" style="display:none">
+          <input type="hidden" name="next" value="">
+          <button type="submit" class="btn btn-danger">Delete Photo</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+  // Modal preview & photo delete
+  var imgModal = document.getElementById('imgModal');
+  var modalImg = document.getElementById('modalImg');
+  var deletePhotoForm = document.getElementById('deletePhotoForm');
+  imgModal.addEventListener('show.bs.modal', function (event) {
+    var trigger = event.relatedTarget;
+    if(trigger && trigger.getAttribute('data-img')) {
+      modalImg.src = trigger.getAttribute('data-img');
+      // Set the delete button's form action based on photo ID
+      var photoId = trigger.getAttribute('data-photo-id');
+      if(photoId){
+      deletePhotoForm.action = "{{ url_for('sickness.delete_sickness_photo', photo_id=1) }}".replace('1', photoId);
+        deletePhotoForm.style.display = "";
+      }else{
+        deletePhotoForm.action = "";
+        deletePhotoForm.style.display = "none";
+      }
+      deletePhotoForm.querySelector('input[name="next"]').value = window.location.pathname + window.location.search;
+    }
+  });
+  imgModal.addEventListener('hidden.bs.modal', function () {
+    modalImg.src = '';
+    deletePhotoForm.action = '';
+    deletePhotoForm.style.display = "none";
+  });
+  // Confirm delete
+  deletePhotoForm.onsubmit = function() {
+    return confirm("Delete this photo?");
+  };
+
+  // Select all checkbox for batch delete
+  document.getElementById('selectAll').onclick = function() {
+    var boxes = document.querySelectorAll('input[name="selected_logs"]');
+    for (var box of boxes) { box.checked = this.checked; }
+  };
+});
+</script>
+{% endblock %}

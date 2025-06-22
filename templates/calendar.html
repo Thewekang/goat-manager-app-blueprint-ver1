@@ -1,0 +1,245 @@
+{% extends "base.html" %}
+{% block head %}
+  {{ super() }}
+  <!-- FullCalendar v6 global CDN -->
+  <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet">
+{% endblock %}
+{% block content %}
+<h2>Farm Calendar</h2>
+<a href="{{ url_for('calendar.add_event') }}" class="btn btn-success mb-3">Add Event</a>
+<div id="calendar"></div>
+<div id="eventModalContainer"></div>
+<div class="modal fade" id="rescheduleModal" tabindex="-1">
+  <div class="modal-dialog">
+    <form id="rescheduleForm">
+      <div class="modal-content">
+        <div class="modal-header"><h5>Reschedule Vaccination</h5></div>
+        <div class="modal-body">
+          <input type="hidden" name="goat_tag" id="reschedule_goat_tag">
+          <input type="hidden" name="vaccine_type_id" id="reschedule_vaccine_type_id">
+          <div class="mb-2">
+            <label>New Date</label>
+            <input type="date" name="new_date" id="reschedule_new_date" class="form-control" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" data-bs-dismiss="modal" class="btn btn-secondary">Cancel</button>
+          <button type="submit" class="btn btn-primary">Reschedule</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endblock %}
+{% block scripts %}
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
+  <script>
+  document.addEventListener('DOMContentLoaded', function() {
+    var calendarEl = document.getElementById('calendar');
+    var calendar = new FullCalendar.Calendar(calendarEl, {
+      initialView: 'dayGridMonth',
+      height: 600,
+      events: "/calendar/api/events",
+      eventColor: '#198754',
+      eventDidMount: function(info) {
+        // Tooltips & colors by category
+        if (info.event.extendedProps.notes) {
+          info.el.title = info.event.extendedProps.notes;
+        }
+        if (info.event.extendedProps.category === "Mating" || info.event.title.startsWith("Mating:")) {
+          info.el.style.backgroundColor = "#0d6efd";
+        }
+        if (info.event.extendedProps.category === "Vaccination") {
+          info.el.style.backgroundColor = "#f39c12";
+        }
+        if (info.event.extendedProps.category === "Custom") {
+          info.el.style.backgroundColor = "#6f42c1";
+        }
+        if (info.event.extendedProps.recurrence) {
+          info.el.style.border = "2px dashed #20c997";
+        }
+      },
+      eventClick: function(info) {
+        let event = info.event;
+        let eventId = event.id;
+        let category = event.extendedProps.category;
+
+        // Vaccination events (not editable/deletable from calendar): show reschedule button
+        if (
+          event.extendedProps.category === 'Vaccination'
+          && event.extendedProps.goat_tag
+          && event.extendedProps.vaccine_type_id
+        ) {
+          let infoHtml = `
+            <div class="modal fade" id="eventModal" tabindex="-1">
+              <div class="modal-dialog"><div class="modal-content">
+                <div class="modal-header">
+                  <h5 class="modal-title">Vaccination Schedule</h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                  <b>Title:</b> ${event.title}<br>
+                  <b>Date:</b> ${event.startStr.slice(0,10)}<br>
+                  <b>Goat Tag:</b> <a href="/goats/${event.extendedProps.goat_tag}" target="_blank">${event.extendedProps.goat_tag}</a><br>
+                  <b>Vaccine:</b> ${event.title.split(' - ')[0]}<br>
+                  <b>Status:</b> ${event.extendedProps.status || ''}<br>
+                  <b>Notes:</b> ${event.extendedProps.notes || ''}<br>
+                  <button class="btn btn-warning btn-sm" 
+                      onclick="openRescheduleModal(
+                        '${event.extendedProps.goat_tag}', 
+                        '${event.extendedProps.vaccine_type_id}', 
+                        '${event.startStr.slice(0,10)}')"
+                  >
+                    Reschedule
+                  </button>
+                </div>
+              </div></div>
+            </div>
+          `;
+          let modalDiv = document.getElementById('eventModalContainer');
+          modalDiv.innerHTML = infoHtml;
+          var modal = new bootstrap.Modal(document.getElementById('eventModal'));
+          modal.show();
+          document.getElementById('eventModal').addEventListener('hidden.bs.modal', function () {
+            modalDiv.innerHTML = '';
+          });
+          return;
+        }
+
+        // Only allow edit/delete for simple integer IDs (FarmEvent and custom events)
+        if (!/^\d+$/.test(eventId)) {
+          // Show info-only modal for recurring/readonly events
+          let infoHtml = `
+            <div class="modal fade" id="eventModal" tabindex="-1">
+              <div class="modal-dialog"><div class="modal-content">
+                <div class="modal-header">
+                  <h5 class="modal-title">Event Details</h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                  <b>Title:</b> ${event.title}<br>
+                  <b>Date:</b> ${event.startStr.slice(0,10)}<br>
+                  <b>Category:</b> ${category || ''}<br>
+                  <b>Notes:</b> ${event.extendedProps.notes || ''}<br>
+                </div>
+              </div></div>
+            </div>
+          `;
+          let modalDiv = document.getElementById('eventModalContainer');
+          modalDiv.innerHTML = infoHtml;
+          var modal = new bootstrap.Modal(document.getElementById('eventModal'));
+          modal.show();
+          document.getElementById('eventModal').addEventListener('hidden.bs.modal', function () {
+            modalDiv.innerHTML = '';
+          });
+          return;
+        }
+
+        // Else, show edit/delete form for admin/custom events
+        let modalHtml = `
+          <div class="modal fade" id="eventModal" tabindex="-1">
+            <div class="modal-dialog"><div class="modal-content">
+              <div class="modal-header"><h5 class="modal-title">Edit Event</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+              </div>
+              <div class="modal-body">
+                <form id="editEventForm">
+                  <input type="hidden" name="id" value="${eventId}">
+                  <div class="mb-2">
+                    <label class="form-label">Title</label>
+                    <input class="form-control" name="title" value="${event.title}">
+                  </div>
+                  <div class="mb-2">
+                    <label class="form-label">Date</label>
+                    <input type="date" class="form-control" name="event_date" value="${event.startStr.slice(0,10)}">
+                  </div>
+                  <div class="mb-2">
+                    <label class="form-label">Category</label>
+                    <input class="form-control" name="category" value="${category || ''}">
+                  </div>
+                  <div class="mb-2">
+                    <label class="form-label">Notes</label>
+                    <textarea class="form-control" name="notes">${event.extendedProps.notes || ''}</textarea>
+                  </div>
+                  <div class="d-flex justify-content-between">
+                    <button type="submit" class="btn btn-success">Save</button>
+                    <button type="button" class="btn btn-danger" id="deleteEventBtn">Delete</button>
+                  </div>
+                </form>
+              </div>
+            </div></div>
+          </div>
+        `;
+        // Remove previous modal, insert new
+        let modalDiv = document.getElementById('eventModalContainer');
+        modalDiv.innerHTML = modalHtml;
+        var modal = new bootstrap.Modal(document.getElementById('eventModal'));
+        modal.show();
+
+        // Handle Save
+        document.getElementById('editEventForm').onsubmit = function(e) {
+          e.preventDefault();
+          let data = Object.fromEntries(new FormData(this));
+          fetch("/calendar/api/events/edit/" + eventId, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(data)
+          }).then(resp => resp.json()).then(data => {
+            if (data.success) {
+              calendar.refetchEvents();
+              modal.hide();
+              modalDiv.innerHTML = '';
+            }
+          });
+        };
+        // Handle Delete
+        document.getElementById('deleteEventBtn').onclick = function() {
+          if (confirm("Delete this event?")) {
+            fetch("/calendar/api/events/delete/" + eventId, {method: 'POST'})
+              .then(resp => resp.json()).then(data => {
+                if (data.success) {
+                  calendar.refetchEvents();
+                  modal.hide();
+                  modalDiv.innerHTML = '';
+                }
+              });
+          }
+        };
+        document.getElementById('eventModal').addEventListener('hidden.bs.modal', function () {
+          modalDiv.innerHTML = '';
+        });
+      }
+    });
+    calendar.render();
+
+    function openRescheduleModal(goatTag, vaccineTypeId, oldDate) {
+        document.getElementById('reschedule_goat_tag').value = goatTag;
+        document.getElementById('reschedule_vaccine_type_id').value = vaccineTypeId;
+        document.getElementById('reschedule_new_date').value = oldDate; // or blank
+        var modal = new bootstrap.Modal(document.getElementById('rescheduleModal'));
+        modal.show();
+    }
+
+    document.getElementById('rescheduleForm').onsubmit = function(e){
+        e.preventDefault();
+        const goatTag = document.getElementById('reschedule_goat_tag').value;
+        const vaccineTypeId = document.getElementById('reschedule_vaccine_type_id').value;
+        const newDate = document.getElementById('reschedule_new_date').value;
+        fetch(`/goats/${goatTag}/vaccine/${vaccineTypeId}/reschedule`, {
+            method: "POST",
+            body: new URLSearchParams({new_date: newDate}),
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'}
+        }).then(r => r.json()).then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert(data.error || "Reschedule failed");
+            }
+        });
+    };
+
+
+  });
+  </script>
+{% endblock %}

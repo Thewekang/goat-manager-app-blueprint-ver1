@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Does Ready for Re-Mating</h2>
+<table class="table table-striped">
+  <thead>
+    <tr>
+      <th>Doe Tag</th>
+      <th>Type</th>
+      <th>Last Mating End</th>
+      <th>Days Since Last Mating</th>
+      <th>Notes</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for doe, last_breeding, days in ready_does %}
+    <tr>
+      <td>{{ doe.tag }}</td>
+      <td>{{ doe.type }}</td>
+      <td>
+        {% if last_breeding %}
+          {{ last_breeding.mating_end_date }}
+        {% else %}
+          Never bred
+        {% endif %}
+      </td>
+      <td>
+        {% if days is not none %}
+          {{ days }}
+        {% else %}
+          -
+        {% endif %}
+      </td>
+      <td>{{ last_breeding.notes if last_breeding else "-" }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

@@ -1,0 +1,293 @@
+{% extends "base.html" %}
+{% block head %}
+  {{ super() }}
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="alert alert-success d-flex align-items-center mb-4" role="alert" style="font-size:1.15em;">
+  <i class="bi bi-house-heart me-2 fs-3"></i>
+  Welcome back, <strong>{{ session.username }}</strong>! 🐐 Wishing you a productive day at the farm.
+</div>
+
+<h2 class="mb-4">Dashboard</h2>
+
+<!-- Summary Cards -->
+<div class="row mb-4 g-3">
+  <div class="col-6 col-md-3">
+    <div class="card text-center">
+      <div class="card-body">
+        <div class="fs-2">{{ total }}</div>
+        <div>Total Goats</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card text-center">
+      <div class="card-body">
+        <div class="fs-2">{{ removed }}</div>
+        <div>Removed</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card text-center">
+      <div class="card-body">
+        <div class="fs-2">{{ avg_weight }}</div>
+        <div>Avg. Weight (kg)</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card text-center">
+      <div class="card-body">
+        <div class="fs-2">{{ num_ready_does }}</div>
+        <div>Does Ready<br>to Mate</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Alert: Sick Goats -->
+{% if num_sick_goats > 0 %}
+  <div class="alert alert-danger mb-2">
+    🚨 <b>{{ num_sick_goats }} sick goat(s)!</b>
+    <ul>
+      {% for g in sick_goats %}
+        <li>
+          <a href="{{ url_for('goats.goat_detail', tag=g.tag) }}" class="fw-bold">{{ g.tag }}</a>
+          {% for tag in g.tags %}
+            <span class="badge bg-danger">{{ tag|capitalize }}</span>
+          {% endfor %}
+        </li>
+      {% endfor %}
+    </ul>
+  </div>
+{% endif %}
+
+<!-- Alert: Underweight Goats -->
+{% if num_underweight > 0 %}
+  <div class="alert alert-warning">
+    ⚠️ {{ num_underweight }} goat(s) are underweight!
+    <ul>
+      {% for goat in underweight %}
+        <li>
+          <a href="{{ url_for('goats.goat_detail', tag=goat.tag) }}" class="fw-bold">{{ goat.tag }}</a>
+          ({{ goat.goat_type.name if goat.goat_type else '-' }}) 
+          - {{ goat.weight }} kg
+        </li>
+      {% endfor %}
+    </ul>
+  </div>
+{% endif %}
+
+<!-- Alert: Does ready for mating -->
+{% if num_ready_does > 0 %}
+<div class="alert alert-warning d-flex align-items-center" role="alert">
+  <div>
+    <b>{{ num_ready_does }} does</b> are ready for re-mating!
+    <a href="{{ url_for('breeding.does_ready') }}" class="btn btn-sm btn-outline-warning ms-2">View List</a>
+  </div>
+</div>
+{% endif %}
+
+<!-- Bar chart: Goats by Type -->
+<div class="card mb-4">
+  <div class="card-header">Goats by Type</div>
+  <div class="card-body">
+    <canvas id="goatsByTypeChart"></canvas>
+  </div>
+</div>
+<script>
+const ctx = document.getElementById('goatsByTypeChart').getContext('2d');
+new Chart(ctx, {
+  type: 'bar',
+  data: {
+    labels: {{ goat_types | tojson }},
+    datasets: [{
+      label: 'Goats by Type',
+      data: {{ goats_by_type | tojson }},
+      borderWidth: 1
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { display: false }
+    }
+  }
+});
+</script>
+
+<!-- Recent Breeding Events (optional, show latest 5) -->
+<div class="card mb-4">
+  <div class="card-header">Recent Breeding Events</div>
+  <div class="card-body p-0">
+    <table class="table table-sm mb-0">
+      <thead>
+        <tr>
+          <th>Date (Start-End)</th>
+          <th>Buck</th>
+          <th>Doe</th>
+          <th>Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for e in recent_breedings %}
+        <tr>
+          <td>{{ e.mating_start_date }}{% if e.mating_end_date %} &ndash; {{ e.mating_end_date }}{% endif %}</td>
+          <td>
+            {% if e.buck %}
+              <a href="{{ url_for('goats.goat_detail', tag=e.buck.tag) }}" class="fw-bold">{{ e.buck.tag }}</a>
+            {% else %}
+              -
+            {% endif %}
+          </td>
+          <td>
+            {% if e.doe %}
+              <a href="{{ url_for('goats.goat_detail', tag=e.doe.tag) }}" class="fw-bold">{{ e.doe.tag }}</a>
+            {% else %}
+              -
+            {% endif %}
+          </td>
+          <td>{{ e.notes or '-' }}</td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="4" class="text-muted">No breeding events yet.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <a href="{{ url_for('breeding.list_breeding') }}" class="btn btn-link">View All Breeding Events</a>
+  </div>
+</div>
+
+<!-- Overdue Vaccinations -->
+{% if overdue_vax %}
+<div class="alert alert-danger">
+  <b>🚨 Overdue Vaccinations:</b>
+  <ul class="mb-0">
+    {% for v in overdue_vax %}
+    <li class="d-flex align-items-center mb-1">
+      <a href="{{ url_for('goats.goat_detail', tag=v.goat.tag) }}" class="fw-bold">{{ v.goat.tag }}</a>
+      <span class="badge bg-danger ms-2">{{ v.vaccine }}</span>
+      <span class="ms-2 text-nowrap">(Due: {{ v.due.strftime('%d-%m-%Y') }})</span>
+      <button class="btn btn-sm btn-outline-light ms-2"
+        onclick="openRescheduleModal('{{ v.goat.tag }}', '{{ v.vaccine_id }}', '{{ v.due.strftime('%Y-%m-%d') }}')">
+        Reschedule
+      </button>
+    </li>
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}
+
+<!-- Upcoming (due soon) Vaccinations -->
+{% if upcoming_vax %}
+<div class="alert alert-warning">
+  <b>⏳ Vaccinations due soon:</b>
+  <ul class="mb-0">
+    {% for v in upcoming_vax %}
+    <li class="d-flex align-items-center mb-1">
+      <a href="{{ url_for('goats.goat_detail', tag=v.goat.tag) }}" class="fw-bold">{{ v.goat.tag }}</a>
+      <span class="badge bg-warning text-dark ms-2">{{ v.vaccine }}</span>
+      <span class="ms-2 text-nowrap">(Due: {{ v.due.strftime('%d-%m-%Y') }})</span>
+      <button class="btn btn-sm btn-outline-secondary ms-2"
+        onclick="openRescheduleModal('{{ v.goat.tag }}', '{{ v.vaccine_id }}', '{{ v.due.strftime('%Y-%m-%d') }}')">
+        Reschedule
+      </button>
+    </li>
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}
+
+<!-- Reschedule Modal (improved) -->
+<div class="modal fade" id="rescheduleModal" tabindex="-1" aria-labelledby="rescheduleModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <form id="rescheduleForm" method="post" autocomplete="off">
+      <div class="modal-content">
+        <div class="modal-header bg-success text-white">
+          <h5 class="modal-title" id="rescheduleModalLabel">Reschedule Vaccination</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div><b>Goat:</b> <span id="modalGoatTag"></span></div>
+          <div><b>Vaccine ID:</b> <span id="modalVaccineId"></span></div>
+          <div><b>Current Due Date:</b> <span id="modalDueDate"></span></div>
+          <div class="mb-3 mt-3">
+            <label for="new_date" class="form-label">New Date</label>
+            <input type="date" class="form-control" id="new_date" name="new_date" required>
+          </div>
+          <div id="rescheduleMsg" class="text-danger"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-success" id="reschedSaveBtn" disabled>Save</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Link to Farm Calendar -->
+<div class="card">
+  <div class="card-body">
+    <h5>Farm Calendar</h5>
+    <a href="{{ url_for('calendar.calendar') }}" class="btn btn-outline-success">Open Calendar</a>
+    <div class="form-text">See matings, vaccinations, custom events.</div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+  {{ super() }}
+  <script>
+    let modal = new bootstrap.Modal(document.getElementById('rescheduleModal'));
+    function openRescheduleModal(tag, vaccineId, dueDate) {
+      document.getElementById('modalGoatTag').textContent = tag;
+      document.getElementById('modalVaccineId').textContent = vaccineId;
+      document.getElementById('modalDueDate').textContent = dueDate;
+      document.getElementById('new_date').value = dueDate;  // Pre-fill with current due date
+      document.getElementById('rescheduleMsg').textContent = '';
+      document.getElementById('reschedSaveBtn').disabled = true;
+      // Save these for form submission
+      document.getElementById('rescheduleForm').dataset.tag = tag;
+      document.getElementById('rescheduleForm').dataset.vaccineId = vaccineId;
+      modal.show();
+    }
+
+    // Enable save only if date is changed and valid
+    document.getElementById('new_date').addEventListener('input', function() {
+      let dueDate = document.getElementById('modalDueDate').textContent;
+      let val = this.value;
+      document.getElementById('reschedSaveBtn').disabled = !val || val === dueDate;
+    });
+
+    document.getElementById('rescheduleForm').onsubmit = async function(e) {
+      e.preventDefault();
+      const tag = this.dataset.tag;
+      const vaccineId = this.dataset.vaccineId;
+      const newDate = document.getElementById('new_date').value;
+
+      fetch(`/goats/${tag}/vaccine/${vaccineId}/reschedule`, {
+        method: "POST",
+        headers: {"Content-Type": "application/x-www-form-urlencoded"},
+        body: "new_date=" + encodeURIComponent(newDate)
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          modal.hide();
+          location.reload();
+        } else {
+          document.getElementById('rescheduleMsg').textContent = data.error || 'Failed to reschedule.';
+        }
+      })
+      .catch(() => {
+        document.getElementById('rescheduleMsg').textContent = "Server error.";
+      });
+    }
+  </script>
+{% endblock %}

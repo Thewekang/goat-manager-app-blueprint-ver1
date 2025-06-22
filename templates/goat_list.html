@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+{% import "macros.html" as macros %}
+
+{% block content %}
+<h2>Goat List</h2>
+<a class="btn btn-success mb-3" href="{{ url_for('goats.add_goat') }}">Add New Goat</a>
+<form method="get" class="row g-2 mb-3">
+  <div class="col-auto">
+    <label class="form-label mb-0">Tags:</label>
+    <div class="d-flex flex-wrap">
+      {% set tag_options = ['sick', 'underweight', 'pregnant', 'ready to mate', 'old', 'new arrival', 'new born', 'matured'] %}
+      {% for tag in tag_options %}
+        <div class="form-check me-2">
+          <input class="form-check-input" type="checkbox" name="tags" value="{{ tag }}"
+                 id="tag-{{ tag|replace(' ', '_') }}"
+                 {% if tag in selected_tags %}checked{% endif %}>
+          <label class="form-check-label" for="tag-{{ tag|replace(' ', '_') }}">
+            {{ tag|capitalize }}
+          </label>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+  <div class="col-auto">
+    <label class="form-label mb-0">Location:</label>
+    <select name="location" class="form-select">
+      <option value="">All Locations</option>
+      {% for loc in locations %}
+        <option value="{{ loc }}" {% if loc == selected_location %}selected{% endif %}>{{ loc }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-auto">
+    <button type="submit" class="btn btn-sm btn-outline-primary">Filter</button>
+    <a href="{{ url_for('goats.list_goats') }}" class="btn btn-sm btn-outline-secondary">Reset</a>
+  </div>
+</form>
+
+
+<table class="table table-striped align-middle">
+  <thead>
+    <tr>
+      <th>Tag</th>
+      <th>Type</th>
+      <th>Sex</th>
+      <th>Date Acquired</th>
+      <th>Acquisition</th>
+      <th>Source/Seller</th>
+      <th>Purchase Price (RM)</th>
+      <th>DOB</th>
+      <th>Age Est (mo)</th>
+      <th>Weight (kg)</th>
+      <th>Location</th>
+      <th>Status</th>
+      <th>Notes</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for goat in goats %}
+    <tr>
+      <td><a href="{{ url_for('goats.goat_detail', tag=goat.tag) }}">{{ goat.tag }}</a></td>
+      <td>{{ goat.goat_type.name if goat.goat_type else '-' }}</td>
+      <td>{{ goat.sex or "-" }}</td>
+      <td>{{ goat.date_acquired or "-" }}</td>
+      <td>{{ goat.acquisition_method or "-" }}</td>
+      <td>{{ goat.source_name or "-" }}</td>
+      <td>
+        {% if goat.purchase_price %}{{ '%.2f'|format(goat.purchase_price) }}{% else %}-{% endif %}
+      </td>
+      <td>{{ goat.dob or "-" }}</td>
+      <td>{{ goat.age_estimate_months or "-" }}</td>
+      <td>{{ goat.weight or "-" }}</td>
+      <td>{{ goat.location or "-" }}</td>
+      <td>
+        {% if goat.status == "active" %}
+          {% for tag in goat.tags %}
+            <span class="badge
+              {% if tag == 'sick' %}bg-danger
+              {% elif tag == 'underweight' %}bg-warning text-dark
+              {% elif tag == 'pregnant' %}bg-info
+              {% elif tag == 'ready to mate' %}bg-success
+              {% elif tag == 'new arrival' or tag == 'new born' %}bg-primary
+              {% elif tag == 'old' %}bg-secondary
+              {% elif tag == 'matured' %}bg-success
+              {% else %}bg-dark
+              {% endif %}
+            ">{{ tag|capitalize }}</span>
+          {% endfor %}
+        {% else %}
+          <span class="badge text-bg-secondary">Removed</span>
+        {% endif %}
+      </td>
+      <td>{{ goat.notes or "-" }}</td>
+      <td>
+        <!-- actions: sickness/remove if permitted, or link to view -->
+        <a href="{{ url_for('goats.goat_detail', tag=goat.tag) }}" class="btn btn-sm btn-info mb-1">View</a>
+        <button class="btn btn-sm btn-outline-primary mb-1"
+                data-bs-toggle="modal"
+                data-bs-target="#editGoatModal"
+                data-goat-id="{{ goat.id }}">
+          Edit
+        </button>
+
+        {% if goat.status == "active" %}
+          {% if current_user and current_user.has_permission('sickness') %}
+            <button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#sickModal-{{ goat.id }}">🩺 Sickness</button>
+            {{ macros.sickness_modal(goat, now().strftime('%Y-%m-%d')) }}
+          {% endif %}
+          {% if current_user and current_user.has_permission('remove') %}
+            <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#removeModal-{{ goat.id }}">Remove</button>
+            {{ macros.remove_modal(goat, now().strftime('%Y-%m-%d')) }}
+          {% endif %}
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<div class="modal fade" id="editGoatModal" tabindex="-1" aria-labelledby="editGoatModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form id="editGoatForm">
+        <div class="modal-header">
+          <h5 class="modal-title" id="editGoatModalLabel">Edit Goat</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body" id="editGoatModalBody">
+          <div class="text-center text-muted">
+            <div class="spinner-border" role="status"></div>
+            Loading...
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-success">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% block scripts %}
+{{ super() }}
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+  var editModal = document.getElementById('editGoatModal');
+  var modalBody = document.getElementById('editGoatModalBody');
+  var editForm = document.getElementById('editGoatForm');
+  var currentGoatId = null;
+
+  editModal.addEventListener('show.bs.modal', function(event) {
+    var button = event.relatedTarget;
+    currentGoatId = button.getAttribute('data-goat-id');
+    fetch('/goats/ajax_edit/' + currentGoatId)
+      .then(res => res.text())
+      .then(html => { modalBody.innerHTML = html; });
+  });
+
+  editForm.onsubmit = function(e) {
+    e.preventDefault();
+    var formData = new FormData(editForm);
+    fetch('/goats/ajax_edit/' + currentGoatId, {
+      method: "POST",
+      body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        var modal = bootstrap.Modal.getInstance(editModal);
+        modal.hide();
+        location.reload();
+      } else {
+        alert(data.message || "Update failed.");
+      }
+    })
+    .catch(() => alert("Server error."));
+  };
+});
+</script>
+{% endblock %}
+{% endblock %}

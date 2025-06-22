@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block content %}
+<h2 class="mb-4">Vaccination Compliance Summary</h2>
+<div class="mb-3 d-flex gap-2 flex-wrap">
+  <a href="{{ url_for('dashboard.home') }}" class="btn btn-secondary">Back to Dashboard</a>
+  <!-- Export/Email can be added here later -->
+</div>
+
+<table class="table table-bordered table-striped align-middle">
+  <thead class="table-success">
+    <tr>
+      <th>Vaccine</th>
+      <th>Total Goats</th>
+      <th>Compliant</th>
+      <th>Compliance (%)</th>
+      <th>Overdue Goats</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for v in compliance_data %}
+      <tr>
+        <td>{{ v.vaccine_type.name }}</td>
+        <td>{{ v.total }}</td>
+        <td>{{ v.compliant }}</td>
+        <td>
+          {% if v.percent == 100 %}
+            <span class="badge bg-success">{{ v.percent }}%</span>
+          {% elif v.percent >= 80 %}
+            <span class="badge bg-warning text-dark">{{ v.percent }}%</span>
+          {% else %}
+            <span class="badge bg-danger">{{ v.percent }}%</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if v.overdue %}
+            {% for o in v.overdue %}
+              <a href="{{ url_for('goats.goat_detail', tag=o.goat.tag) }}">{{ o.goat.tag }}</a>
+              (Due: {{ o.due_date.strftime('%d-%m-%Y') }})<br>
+            {% endfor %}
+          {% else %}
+            <span class="text-success">-</span>
+          {% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<hr>
+
+<h4>Recent Vaccinations (last 100)</h4>
+<table class="table table-bordered table-sm">
+  <thead>
+    <tr>
+      <th>Date Given</th>
+      <th>Goat Tag</th>
+      <th>Vaccine</th>
+      <th>Batch #</th>
+      <th>Given By</th>
+      <th>Notes</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for v in vaccinations %}
+      <tr>
+        <td>{{ v.actual_date_given or "-" }}</td>
+        <td><a href="{{ url_for('goats.goat_detail', tag=v.goat.tag) }}">{{ v.goat.tag }}</a></td>
+        <td>{{ v.vaccine_type.name }}</td>
+        <td>{{ v.batch_number or "-" }}</td>
+        <td>{{ v.given_by or "-" }}</td>
+        <td>{{ v.notes or "-" }}</td>
+      </tr>
+    {% else %}
+      <tr>
+        <td colspan="6" class="text-muted text-center">No recent vaccinations.</td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

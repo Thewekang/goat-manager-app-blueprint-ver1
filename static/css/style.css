@@ -1,0 +1,88 @@
+/* Global Styles */
+body {
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  line-height: 1.5;
+  padding-bottom: 2rem;
+}
+
+/* Alert Floating */
+.alert-floating {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 1050;
+  min-width: 250px;
+  max-width: 90%;
+}
+
+/* Photo thumbnails */
+.photo-thumb-img {
+  transition: transform 0.2s;
+}
+.photo-thumb-img:hover {
+  transform: scale(1.05);
+}
+
+/* Custom table styles */
+.table-compact {
+  font-size: 0.9rem;
+}
+.table-compact td,
+.table-compact th {
+  padding: 0.5rem;
+}
+
+/* Status badges */
+.badge {
+  font-weight: normal;
+  padding: 0.4em 0.6em;
+}
+
+/* Form controls */
+.form-control:focus {
+  border-color: #28a745;
+  box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25);
+}
+
+/* Navigation */
+.navbar-brand {
+  font-weight: 600;
+}
+
+/* Cards */
+.card {
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  transition: box-shadow 0.3s;
+}
+.card:hover {
+  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+/* Buttons */
+.btn {
+  font-weight: 500;
+}
+.btn-outline-success:hover {
+  background-color: #28a745;
+  border-color: #28a745;
+  color: white;
+}
+
+/* Modal customization */
+.modal-header {
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #dee2e6;
+}
+
+/* Print styles */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  .table {
+    font-size: 12pt;
+  }
+  .badge {
+    border: 1px solid #000;
+  }
+}
