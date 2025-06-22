@@ -2,8 +2,22 @@
 {% import "macros.html" as macros %}
 
 {% block content %}
-<h2>Goat List</h2>
-<a class="btn btn-success mb-3" href="{{ url_for('goats.add_goat') }}">Add New Goat</a>
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h2>Goat List</h2>
+  <div class="d-flex gap-2 align-items-center">
+    <div class="btn-group" role="group" aria-label="View toggle">
+      <button type="button" class="btn btn-outline-primary" data-view="list">
+        <i class="bi bi-list-ul"></i> List
+      </button>
+      <button type="button" class="btn btn-outline-primary" data-view="card">
+        <i class="bi bi-grid-3x3-gap"></i> Cards
+      </button>
+    </div>
+    <a class="btn btn-success" href="{{ url_for('goats.add_goat') }}">
+      <i class="bi bi-plus-lg"></i> Add New Goat
+    </a>
+  </div>
+</div>
 <form method="get" class="row g-2 mb-3">
   <div class="col-auto">
     <label class="form-label mb-0">Tags:</label>
@@ -37,7 +51,9 @@
 </form>
 
 
-<table class="table table-striped align-middle">
+<!-- List View -->
+<div id="list-view">
+  <table class="table table-striped align-middle">
   <thead>
     <tr>
       <th>Tag</th>
@@ -105,18 +121,137 @@
         {% if goat.status == "active" %}
           {% if current_user and current_user.has_permission('sickness') %}
             <button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#sickModal-{{ goat.id }}">🩺 Sickness</button>
-            {{ macros.sickness_modal(goat, now().strftime('%Y-%m-%d')) }}
           {% endif %}
           {% if current_user and current_user.has_permission('remove') %}
             <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#removeModal-{{ goat.id }}">Remove</button>
-            {{ macros.remove_modal(goat, now().strftime('%Y-%m-%d')) }}
           {% endif %}
         {% endif %}
       </td>
     </tr>
     {% endfor %}
   </tbody>
-</table>
+  </table>
+</div>
+
+<!-- Card View -->
+<div id="card-view" style="display: none;">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="items-per-page">
+      <label for="cardsPerPage" class="form-label mb-0">Cards per page:</label>
+      <select id="cardsPerPage" class="form-select form-select-sm">
+        <option value="12">12</option>
+        <option value="24" selected>24</option>
+        <option value="48">48</option>
+        <option value="all">All</option>
+      </select>
+    </div>
+    <div id="cardPaginationInfo" class="text-muted small"></div>
+  </div>
+  
+  <div id="cardContainer" class="card-grid">
+    {% for goat in goats %}
+    <div class="card goat-card">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start mb-2">
+          <h5 class="card-title mb-0">
+            <a href="{{ url_for('goats.goat_detail', tag=goat.tag) }}" class="text-decoration-none">
+              {{ goat.tag }}
+            </a>
+          </h5>
+          <div>
+            {% if goat.status == "active" %}
+              {% for tag in goat.tags %}
+                <span class="badge
+                  {% if tag == 'sick' %}bg-danger
+                  {% elif tag == 'underweight' %}bg-warning text-dark
+                  {% elif tag == 'pregnant' %}bg-info
+                  {% elif tag == 'ready to mate' %}bg-success
+                  {% elif tag == 'new arrival' or tag == 'new born' %}bg-primary
+                  {% elif tag == 'old' %}bg-secondary
+                  {% elif tag == 'matured' %}bg-success
+                  {% else %}bg-dark
+                  {% endif %}
+                ">{{ tag|capitalize }}</span>
+              {% endfor %}
+            {% else %}
+              <span class="badge text-bg-secondary">Removed</span>
+            {% endif %}
+          </div>
+        </div>
+        
+        <div class="row g-2 mb-3">
+          <div class="col-6">
+            <small class="text-muted d-block">Type</small>
+            {{ goat.goat_type.name if goat.goat_type else '-' }}
+          </div>
+          <div class="col-6">
+            <small class="text-muted d-block">Sex</small>
+            {{ goat.sex or "-" }}
+          </div>
+          <div class="col-6">
+            <small class="text-muted d-block">Weight</small>
+            {{ goat.weight or "-" }} kg
+          </div>
+          <div class="col-6">
+            <small class="text-muted d-block">Age</small>
+            {{ goat.calculated_age_months or "-" }} mo
+          </div>
+          <div class="col-12">
+            <small class="text-muted d-block">Location</small>
+            {{ goat.location or "-" }}
+          </div>
+        </div>
+
+        <div class="d-flex gap-1">
+          <a href="{{ url_for('goats.goat_detail', tag=goat.tag) }}" class="btn btn-sm btn-info">
+            <i class="bi bi-eye"></i>
+          </a>
+          <button class="btn btn-sm btn-outline-primary"
+                  data-bs-toggle="modal"
+                  data-bs-target="#editGoatModal"
+                  data-goat-id="{{ goat.id }}">
+            <i class="bi bi-pencil"></i>
+          </button>
+
+          {% if goat.status == "active" %}
+            {% if current_user and current_user.has_permission('sickness') %}
+              <button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#sickModal-{{ goat.id }}">
+                <i class="bi bi-heart-pulse"></i>
+              </button>
+            {% endif %}
+            {% if current_user and current_user.has_permission('remove') %}
+              <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#removeModal-{{ goat.id }}">
+                <i class="bi bi-trash"></i>
+              </button>
+            {% endif %}
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Card Pagination -->
+  <div class="pagination-controls">
+    <nav aria-label="Card pagination">
+      <ul class="pagination" id="cardPagination">
+        <!-- Pagination will be generated by JavaScript -->
+      </ul>
+    </nav>
+  </div>
+</div>
+
+<!-- Modals for all goats (rendered outside the card containers) -->
+{% for goat in goats %}
+  {% if goat.status == "active" %}
+    {% if current_user and current_user.has_permission('sickness') %}
+      {{ macros.sickness_modal(goat, now().strftime('%Y-%m-%d')) }}
+    {% endif %}
+    {% if current_user and current_user.has_permission('remove') %}
+      {{ macros.remove_modal(goat, now().strftime('%Y-%m-%d')) }}
+    {% endif %}
+  {% endif %}
+{% endfor %}
 
 <div class="modal fade" id="editGoatModal" tabindex="-1" aria-labelledby="editGoatModalLabel" aria-hidden="true">
   <div class="modal-dialog">
@@ -144,6 +279,167 @@
 {% block scripts %}
 {{ super() }}
 <script>
+// View Toggle Logic
+document.addEventListener('DOMContentLoaded', function() {
+  const listViewBtn = document.querySelector('[data-view="list"]');
+  const cardViewBtn = document.querySelector('[data-view="card"]');
+  const listView = document.getElementById('list-view');
+  const cardView = document.getElementById('card-view');
+
+  // Get saved view preference
+  const savedView = localStorage.getItem('goatListView') || 'list';
+  
+  function setActiveView(view) {
+    if (view === 'list') {
+      listView.style.display = 'block';
+      cardView.style.display = 'none';
+      listViewBtn.classList.add('active');
+      cardViewBtn.classList.remove('active');
+    } else {
+      listView.style.display = 'none';
+      cardView.style.display = 'block';
+      cardViewBtn.classList.add('active');
+      listViewBtn.classList.remove('active');
+    }
+    localStorage.setItem('goatListView', view);
+  }
+
+  // Set initial view
+  setActiveView(savedView);
+
+  // Add click handlers
+  listViewBtn.addEventListener('click', () => setActiveView('list'));
+  cardViewBtn.addEventListener('click', () => setActiveView('card'));
+
+  // Card Pagination Logic
+  const cardsPerPageSelect = document.getElementById('cardsPerPage');
+  const cardContainer = document.getElementById('cardContainer');
+  const cardPagination = document.getElementById('cardPagination');
+  const cardPaginationInfo = document.getElementById('cardPaginationInfo');
+  const allCards = Array.from(document.querySelectorAll('.goat-card'));
+  
+  let currentPage = 1;
+  let cardsPerPage = parseInt(cardsPerPageSelect.value);
+
+  function updateCardPagination() {
+    const totalCards = allCards.length;
+    const totalPages = cardsPerPage === 'all' ? 1 : Math.ceil(totalCards / cardsPerPage);
+    
+    // Hide all cards first
+    allCards.forEach(card => card.style.display = 'none');
+    
+    if (cardsPerPage === 'all') {
+      // Show all cards
+      allCards.forEach(card => card.style.display = 'block');
+      cardPaginationInfo.textContent = `Showing all ${totalCards} goats`;
+      cardPagination.innerHTML = '';
+    } else {
+      // Show cards for current page
+      const startIndex = (currentPage - 1) * cardsPerPage;
+      const endIndex = Math.min(startIndex + cardsPerPage, totalCards);
+      
+      for (let i = startIndex; i < endIndex; i++) {
+        if (allCards[i]) {
+          allCards[i].style.display = 'block';
+        }
+      }
+      
+      // Update pagination info
+      cardPaginationInfo.textContent = `Showing ${startIndex + 1}-${endIndex} of ${totalCards} goats`;
+      
+      // Generate pagination buttons
+      generatePaginationButtons(totalPages);
+    }
+  }
+
+  function generatePaginationButtons(totalPages) {
+    cardPagination.innerHTML = '';
+    
+    if (totalPages <= 1) return;
+
+    // Previous button
+    const prevLi = document.createElement('li');
+    prevLi.className = `page-item ${currentPage === 1 ? 'disabled' : ''}`;
+    prevLi.innerHTML = `<a class="page-link" href="#" data-page="${currentPage - 1}">Previous</a>`;
+    cardPagination.appendChild(prevLi);
+
+    // Page numbers
+    const startPage = Math.max(1, currentPage - 2);
+    const endPage = Math.min(totalPages, currentPage + 2);
+
+    if (startPage > 1) {
+      const firstLi = document.createElement('li');
+      firstLi.className = 'page-item';
+      firstLi.innerHTML = `<a class="page-link" href="#" data-page="1">1</a>`;
+      cardPagination.appendChild(firstLi);
+      
+      if (startPage > 2) {
+        const ellipsisLi = document.createElement('li');
+        ellipsisLi.className = 'page-item disabled';
+        ellipsisLi.innerHTML = `<span class="page-link">...</span>`;
+        cardPagination.appendChild(ellipsisLi);
+      }
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+      const li = document.createElement('li');
+      li.className = `page-item ${i === currentPage ? 'active' : ''}`;
+      li.innerHTML = `<a class="page-link" href="#" data-page="${i}">${i}</a>`;
+      cardPagination.appendChild(li);
+    }
+
+    if (endPage < totalPages) {
+      if (endPage < totalPages - 1) {
+        const ellipsisLi = document.createElement('li');
+        ellipsisLi.className = 'page-item disabled';
+        ellipsisLi.innerHTML = `<span class="page-link">...</span>`;
+        cardPagination.appendChild(ellipsisLi);
+      }
+      
+      const lastLi = document.createElement('li');
+      lastLi.className = 'page-item';
+      lastLi.innerHTML = `<a class="page-link" href="#" data-page="${totalPages}">${totalPages}</a>`;
+      cardPagination.appendChild(lastLi);
+    }
+
+    // Next button
+    const nextLi = document.createElement('li');
+    nextLi.className = `page-item ${currentPage === totalPages ? 'disabled' : ''}`;
+    nextLi.innerHTML = `<a class="page-link" href="#" data-page="${currentPage + 1}">Next</a>`;
+    cardPagination.appendChild(nextLi);
+  }
+
+  // Handle pagination clicks
+  cardPagination.addEventListener('click', function(e) {
+    e.preventDefault();
+    if (e.target.tagName === 'A' && !e.target.parentElement.classList.contains('disabled')) {
+      const page = parseInt(e.target.dataset.page);
+      if (page && page !== currentPage) {
+        currentPage = page;
+        updateCardPagination();
+      }
+    }
+  });
+
+  // Handle cards per page change
+  cardsPerPageSelect.addEventListener('change', function() {
+    cardsPerPage = this.value === 'all' ? 'all' : parseInt(this.value);
+    currentPage = 1;
+    updateCardPagination();
+    localStorage.setItem('cardsPerPage', this.value);
+  });
+
+  // Load saved cards per page preference
+  const savedCardsPerPage = localStorage.getItem('cardsPerPage');
+  if (savedCardsPerPage) {
+    cardsPerPageSelect.value = savedCardsPerPage;
+    cardsPerPage = savedCardsPerPage === 'all' ? 'all' : parseInt(savedCardsPerPage);
+  }
+
+  // Initialize pagination
+  updateCardPagination();
+});
+
 document.addEventListener("DOMContentLoaded", function() {
   var editModal = document.getElementById('editGoatModal');
   var modalBody = document.getElementById('editGoatModalBody');

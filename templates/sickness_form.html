@@ -17,6 +17,6 @@
     <input type="date" class="form-control" name="date" value="{{ today }}">
   </div>
   <button type="submit" class="btn btn-danger">Record</button>
-  <a href="{{ url_for('list_goats') }}" class="btn btn-secondary">Cancel</a>
+  <a href="{{ url_for('goats.list_goats') }}" class="btn btn-secondary">Cancel</a>
 </form>
 {% endblock %}

@@ -52,7 +52,7 @@ with app.app_context():
     # 4. Create Users
     superadmin = User(username="superadmin", full_name="Super Admin", email="superadmin@goat.com", phone="0111111111", role="superadmin", status="active", created_by="system")
     superadmin.set_password("password")
-    admin = User(username="admin", full_name="Admin User", email="admin@goat.com", phone="0222222222", role="admin", status="active", created_by="superadmin")
+    admin = User(username="admin", full_name="Admin User", email="admin@goat.com", phone="0222222222", role="admin", status="active", created_by="superadmin", permissions="sickness")
     admin.set_password("password")
     worker = User(username="worker", full_name="Worker User", email="worker@goat.com", phone="0333333333", role="worker", status="active", created_by="admin")
     worker.set_password("password")

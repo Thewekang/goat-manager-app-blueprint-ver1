@@ -7,20 +7,23 @@ document.addEventListener('DOMContentLoaded', function() {
         return new bootstrap.Tooltip(tooltipTriggerEl);
     });
 
-    // Auto-hide alerts after 5 seconds
+    // Auto-hide alerts after 5 seconds (except permanent ones)
     const alerts = document.querySelectorAll('.alert:not(.alert-permanent)');
     alerts.forEach(function(alert) {
-        setTimeout(function() {
-            if (alert && alert.parentNode) {
-                alert.style.transition = 'opacity 0.5s';
-                alert.style.opacity = '0';
-                setTimeout(function() {
-                    if (alert.parentNode) {
-                        alert.parentNode.removeChild(alert);
-                    }
-                }, 500);
-            }
-        }, 5000);
+        // Double check that the alert doesn't have alert-permanent class
+        if (!alert.classList.contains('alert-permanent')) {
+            setTimeout(function() {
+                if (alert && alert.parentNode && !alert.classList.contains('alert-permanent')) {
+                    alert.style.transition = 'opacity 0.5s';
+                    alert.style.opacity = '0';
+                    setTimeout(function() {
+                        if (alert.parentNode && !alert.classList.contains('alert-permanent')) {
+                            alert.parentNode.removeChild(alert);
+                        }
+                    }, 500);
+                }
+            }, 5000);
+        }
     });
 
     // Form validation helpers

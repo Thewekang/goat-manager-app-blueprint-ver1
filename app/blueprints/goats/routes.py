@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify
-from ...models import Goat, GoatType, Sickness, SicknessPhoto, Removal, WeightLog, GoatFeedback, GoatFeedbackPhoto, VaccineType, VaccinationEvent, BreedingEvent
+from ...models import Goat, GoatType, Sickness, SicknessPhoto, Removal, WeightLog, GoatFeedback, GoatFeedbackPhoto, VaccineType, VaccinationEvent, BreedingEvent, User
 from ...extensions import db
 from ...utils import require_permission, require_any_role, get_vaccine_due_info, get_target_weight
 from werkzeug.utils import secure_filename
@@ -25,6 +25,16 @@ def list_goats():
         goats = [g for g in goats if hasattr(g, "tags") and any(tag in g.tags for tag in selected_tags)]
     if selected_location:
         goats = [g for g in goats if g.location == selected_location]
+
+    # Calculate age for each goat
+    for goat in goats:
+        if goat.dob:
+            age_days = (datetime.now().date() - datetime.strptime(goat.dob, '%Y-%m-%d').date()).days
+            goat.calculated_age_months = round(age_days / 30.44, 1)
+        elif goat.age_estimate_months:
+            goat.calculated_age_months = goat.age_estimate_months
+        else:
+            goat.calculated_age_months = None
 
     alerts = {}
     for goat in goats:
@@ -141,20 +151,26 @@ def goat_detail(tag):
         return redirect(url_for("auth.login"))
 
     goat = Goat.query.filter_by(tag=tag).first_or_404()
-    vaccine_due_info = get_vaccine_due_info(goat)
-
+    
+    # Calculate age
     if goat.dob:
         age_days = (datetime.now().date() - datetime.strptime(goat.dob, '%Y-%m-%d').date()).days
+        goat.calculated_age_months = round(age_days / 30.44, 1)
     elif goat.age_estimate_months:
+        goat.calculated_age_months = goat.age_estimate_months
         age_days = goat.age_estimate_months * 30
     else:
+        goat.calculated_age_months = None
         age_days = 0
+
+    # Get vaccine info
+    vaccine_due_info = get_vaccine_due_info(goat)
 
     has_any_vaccine = bool(getattr(goat, "vaccination_events", None))
 
     weight_page = request.args.get('weight_page', 1, type=int)
     weight_logs = WeightLog.query.filter_by(goat_id=goat.id)\
-        .order_by(WeightLog.date.desc())\
+        .order_by(WeightLog.date.desc(), WeightLog.created_at.desc())\
         .paginate(page=weight_page, per_page=10, error_out=False)
 
     vaccine_page = request.args.get('vaccine_page', 1, type=int)
@@ -173,6 +189,11 @@ def goat_detail(tag):
         .order_by(Sickness.created_at.desc())\
         .paginate(page=sickness_page, per_page=10, error_out=False)
 
+    # Get user permissions
+    user = None
+    if session.get("username"):
+        user = User.query.filter_by(username=session["username"]).first()
+
     return render_template(
         "goat_detail.html",
         goat=goat,
@@ -183,7 +204,8 @@ def goat_detail(tag):
         vaccine_events=vaccine_events,
         breeding_events=breeding_events,
         sickness_history=sickness_history,
-        now=datetime.utcnow()
+        now=datetime.utcnow(),
+        user=user
     )
 
 @goats_bp.route("/goats/<tag>/add_weight", methods=["POST"])
@@ -241,13 +263,13 @@ def remove_goat(tag):
         return redirect(url_for("goats.list_goats"))
     if request.method == "POST":
         reason = request.form["reason"]
-        note = request.form["note"]
+        notes = request.form["note"]
         date = request.form["date"]
         goat.status = "removed"
         r = Removal(
             goat_id=goat.id,
             reason=reason,
-            note=note,
+            notes=notes,
             date=date,
             created_by=session.get("username"),
             created_at=datetime.utcnow(),

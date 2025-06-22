@@ -50,7 +50,7 @@
 
 <!-- Alert: Sick Goats -->
 {% if num_sick_goats > 0 %}
-  <div class="alert alert-danger mb-2">
+  <div class="alert alert-danger alert-permanent mb-2" role="alert">
     🚨 <b>{{ num_sick_goats }} sick goat(s)!</b>
     <ul>
       {% for g in sick_goats %}
@@ -67,7 +67,7 @@
 
 <!-- Alert: Underweight Goats -->
 {% if num_underweight > 0 %}
-  <div class="alert alert-warning">
+  <div class="alert alert-warning alert-permanent" role="alert">
     ⚠️ {{ num_underweight }} goat(s) are underweight!
     <ul>
       {% for goat in underweight %}
@@ -83,7 +83,7 @@
 
 <!-- Alert: Does ready for mating -->
 {% if num_ready_does > 0 %}
-<div class="alert alert-warning d-flex align-items-center" role="alert">
+<div class="alert alert-warning alert-permanent d-flex align-items-center" role="alert">
   <div>
     <b>{{ num_ready_does }} does</b> are ready for re-mating!
     <a href="{{ url_for('breeding.does_ready') }}" class="btn btn-sm btn-outline-warning ms-2">View List</a>
@@ -165,7 +165,7 @@ new Chart(ctx, {
 
 <!-- Overdue Vaccinations -->
 {% if overdue_vax %}
-<div class="alert alert-danger">
+<div class="alert alert-danger alert-permanent" role="alert">
   <b>🚨 Overdue Vaccinations:</b>
   <ul class="mb-0">
     {% for v in overdue_vax %}
@@ -185,7 +185,7 @@ new Chart(ctx, {
 
 <!-- Upcoming (due soon) Vaccinations -->
 {% if upcoming_vax %}
-<div class="alert alert-warning">
+<div class="alert alert-warning alert-permanent" role="alert">
   <b>⏳ Vaccinations due soon:</b>
   <ul class="mb-0">
     {% for v in upcoming_vax %}
