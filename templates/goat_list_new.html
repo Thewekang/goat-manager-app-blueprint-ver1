@@ -1,0 +1,1014 @@
+{% extends "base.html" %}
+{% import "macros.html" as macros %}
+
+{% block content %}
+<!-- Header Section -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h1 class="mb-1">Goat Management</h1>
+    <p class="text-muted mb-0">{{ goats|length }} goats total • {{ stats.active_count }} active</p>
+  </div>
+  <div class="d-flex gap-2">
+    <div class="btn-group" role="group">
+      <button type="button" class="btn btn-outline-primary" data-view="list">
+        <i class="bi bi-list-ul"></i> List
+      </button>
+      <button type="button" class="btn btn-outline-primary" data-view="card">
+        <i class="bi bi-grid-3x3-gap"></i> Cards
+      </button>
+    </div>
+    <div class="dropdown">
+      <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+        <i class="bi bi-three-dots-vertical"></i>
+      </button>
+      <ul class="dropdown-menu dropdown-menu-end">
+        <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#columnModal">
+          <i class="bi bi-layout-three-columns"></i> Customize Columns
+        </a></li>
+        <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#exportModal">
+          <i class="bi bi-download"></i> Export Data
+        </a></li>
+        <li><hr class="dropdown-divider"></li>
+        <li><a class="dropdown-item" href="#" id="bulkActionBtn">
+          <i class="bi bi-check2-square"></i> Bulk Actions
+        </a></li>
+      </ul>
+    </div>
+    <a class="btn btn-success" href="{{ url_for('goats.add_goat') }}">
+      <i class="bi bi-plus-lg"></i> Add New Goat
+    </a>
+  </div>
+</div>
+
+<!-- Quick Stats Cards -->
+<div class="row g-3 mb-4">
+  <div class="col-md-3">
+    <div class="card border-0 bg-primary bg-opacity-10">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <div class="text-primary mb-1"><i class="bi bi-circle-fill"></i> Total Active</div>
+            <h3 class="mb-0">{{ stats.active_count }}</h3>
+          </div>
+          <div class="text-primary fs-4"><i class="bi bi-goat"></i></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card border-0 bg-danger bg-opacity-10">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <div class="text-danger mb-1"><i class="bi bi-circle-fill"></i> Need Attention</div>
+            <h3 class="mb-0">{{ stats.sick_count + stats.underweight_count }}</h3>
+          </div>
+          <div class="text-danger fs-4"><i class="bi bi-heart-pulse"></i></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card border-0 bg-success bg-opacity-10">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <div class="text-success mb-1"><i class="bi bi-circle-fill"></i> Ready to Mate</div>
+            <h3 class="mb-0">{{ stats.ready_to_mate_count }}</h3>
+          </div>
+          <div class="text-success fs-4"><i class="bi bi-heart"></i></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card border-0 bg-info bg-opacity-10">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <div class="text-info mb-1"><i class="bi bi-circle-fill"></i> Pregnant</div>
+            <h3 class="mb-0">{{ stats.pregnant_count }}</h3>
+          </div>
+          <div class="text-info fs-4"><i class="bi bi-stars"></i></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Smart Filter Bar -->
+<div class="card mb-4">
+  <div class="card-body">
+    <form method="get" id="filterForm" class="row g-3">
+      <!-- Search Bar -->
+      <div class="col-md-4">
+        <div class="input-group">
+          <span class="input-group-text bg-transparent">
+            <i class="bi bi-search"></i>
+          </span>
+          <input type="text" class="form-control" name="search" placeholder="Search by tag, type, location..."
+                 value="{{ request.args.get('search', '') }}">
+        </div>
+      </div>
+
+      <!-- Smart Filter Dropdown -->
+      <div class="col-md-3">
+        <select class="form-select" name="smart_filter" id="smartFilter">
+          <option value="">Smart Filters</option>
+          <option value="need_attention">Need Attention</option>
+          <option value="ready_mate">Ready to Mate</option>
+          <option value="pregnant">Pregnant</option>
+          <option value="new_arrivals">New Arrivals</option>
+          <option value="underweight">Underweight</option>
+        </select>
+      </div>
+
+      <!-- Quick Tag Filters -->
+      <div class="col-md-5">
+        <div class="d-flex gap-2 flex-wrap">
+          {% for tag in ['sick', 'underweight', 'pregnant', 'ready to mate'] %}
+            <input type="checkbox" class="btn-check" name="tags" value="{{ tag }}" 
+                   id="tag-{{ tag|replace(' ', '_') }}" {% if tag in selected_tags %}checked{% endif %}>
+            <label class="btn btn-outline-secondary btn-sm" for="tag-{{ tag|replace(' ', '_') }}">
+              {{ tag|capitalize }}
+            </label>
+          {% endfor %}
+          <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#advancedFilterModal">
+            <i class="bi bi-funnel"></i> More Filters
+          </button>
+        </div>
+      </div>
+
+      <!-- Active Filters Display -->
+      <div class="col-12" id="activeFilters">
+        {% if selected_filters %}
+          <div class="d-flex gap-2 flex-wrap">
+            {% for filter in selected_filters %}
+              <span class="badge bg-light text-dark">
+                {{ filter.label }}
+                <button type="button" class="btn-close btn-close-white" 
+                        data-filter-remove="{{ filter.param }}"
+                        aria-label="Remove filter"></button>
+              </span>
+            {% endfor %}
+            <a href="{{ url_for('goats.list_goats') }}" class="btn btn-link btn-sm text-decoration-none">
+              Clear all filters
+            </a>
+          </div>
+        {% endif %}
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- List View -->
+<div id="list-view" class="card">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead class="bg-light">
+        <tr>
+          <th>
+            <input type="checkbox" class="form-check-input" id="selectAll">
+          </th>
+          <th>Tag</th>
+          <th>Type</th>
+          <th>Sex</th>
+          <th>Age</th>
+          <th>Weight</th>
+          <th>Location</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for goat in goats %}
+        <tr>
+          <td>
+            <input type="checkbox" class="form-check-input goat-select" value="{{ goat.id }}">
+          </td>
+          <td>
+            <a href="{{ url_for('goats.goat_detail', tag=goat.tag) }}" class="text-decoration-none">
+              {{ goat.tag }}
+            </a>
+          </td>
+          <td>{{ goat.goat_type.name if goat.goat_type else '-' }}</td>
+          <td>
+            {% if goat.sex == 'Male' %}
+              <i class="bi bi-gender-male text-primary"></i> Male
+            {% elif goat.sex == 'Female' %}
+              <i class="bi bi-gender-female text-danger"></i> Female
+            {% else %}
+              -
+            {% endif %}
+          </td>
+          <td>{{ goat.calculated_age_months or "-" }} mo</td>
+          <td>{{ goat.weight or "-" }} kg</td>
+          <td>{{ goat.location or "-" }}</td>
+          <td>
+            {% if goat.status == "active" %}
+              {% for tag in goat.tags %}
+                <span class="badge
+                  {% if tag == 'sick' %}bg-danger
+                  {% elif tag == 'underweight' %}bg-warning text-dark
+                  {% elif tag == 'pregnant' %}bg-info
+                  {% elif tag == 'ready to mate' %}bg-success
+                  {% elif tag == 'new arrival' or tag == 'new born' %}bg-primary
+                  {% elif tag == 'old' %}bg-secondary
+                  {% elif tag == 'matured' %}bg-success
+                  {% else %}bg-dark
+                  {% endif %}
+                ">{{ tag|capitalize }}</span>
+              {% endfor %}
+            {% else %}
+              <span class="badge text-bg-secondary">Removed</span>
+            {% endif %}
+          </td>
+          <td>
+            <div class="dropdown">
+              <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                Actions
+              </button>
+              <ul class="dropdown-menu">
+                <li>
+                  <a class="dropdown-item" href="{{ url_for('goats.goat_detail', tag=goat.tag) }}">
+                    <i class="bi bi-eye"></i> View Details
+                  </a>
+                </li>
+                <li>
+                  <button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#editGoatModal" data-goat-id="{{ goat.id }}">
+                    <i class="bi bi-pencil"></i> Edit
+                  </button>
+                </li>
+                {% if goat.status == "active" %}
+                  {% if current_user and current_user.has_permission('sickness') %}
+                    <li>
+                      <button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#sickModal-{{ goat.id }}">
+                        <i class="bi bi-heart-pulse"></i> Record Sickness
+                      </button>
+                    </li>
+                  {% endif %}
+                  {% if current_user and current_user.has_permission('remove') %}
+                    <li>
+                      <button class="dropdown-item text-danger" data-bs-toggle="modal" data-bs-target="#removeModal-{{ goat.id }}">
+                        <i class="bi bi-trash"></i> Remove
+                      </button>
+                    </li>
+                  {% endif %}
+                {% endif %}
+              </ul>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Card View -->
+<div id="card-view" style="display: none;">
+  <div class="row g-4" id="cardContainer">
+    {% for goat in goats %}
+    <div class="col-md-6 col-lg-4 col-xl-3">
+      <div class="card h-100">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-start mb-3">
+            <h5 class="card-title mb-0">
+              <a href="{{ url_for('goats.goat_detail', tag=goat.tag) }}" class="text-decoration-none">
+                {{ goat.tag }}
+              </a>
+            </h5>
+            <div class="dropdown">
+              <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="dropdown">
+                <i class="bi bi-three-dots-vertical"></i>
+              </button>
+              <ul class="dropdown-menu dropdown-menu-end">
+                <li>
+                  <a class="dropdown-item" href="{{ url_for('goats.goat_detail', tag=goat.tag) }}">
+                    <i class="bi bi-eye"></i> View Details
+                  </a>
+                </li>
+                <li>
+                  <button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#editGoatModal" data-goat-id="{{ goat.id }}">
+                    <i class="bi bi-pencil"></i> Edit
+                  </button>
+                </li>
+                {% if goat.status == "active" %}
+                  {% if current_user and current_user.has_permission('sickness') %}
+                    <li>
+                      <button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#sickModal-{{ goat.id }}">
+                        <i class="bi bi-heart-pulse"></i> Record Sickness
+                      </button>
+                    </li>
+                  {% endif %}
+                  {% if current_user and current_user.has_permission('remove') %}
+                    <li>
+                      <button class="dropdown-item text-danger" data-bs-toggle="modal" data-bs-target="#removeModal-{{ goat.id }}">
+                        <i class="bi bi-trash"></i> Remove
+                      </button>
+                    </li>
+                  {% endif %}
+                {% endif %}
+              </ul>
+            </div>
+          </div>
+          
+          <div class="mb-3">
+            {% if goat.status == "active" %}
+              {% for tag in goat.tags %}
+                <span class="badge
+                  {% if tag == 'sick' %}bg-danger
+                  {% elif tag == 'underweight' %}bg-warning text-dark
+                  {% elif tag == 'pregnant' %}bg-info
+                  {% elif tag == 'ready to mate' %}bg-success
+                  {% elif tag == 'new arrival' or tag == 'new born' %}bg-primary
+                  {% elif tag == 'old' %}bg-secondary
+                  {% elif tag == 'matured' %}bg-success
+                  {% else %}bg-dark
+                  {% endif %}
+                ">{{ tag|capitalize }}</span>
+              {% endfor %}
+            {% else %}
+              <span class="badge text-bg-secondary">Removed</span>
+            {% endif %}
+          </div>
+
+          <div class="row g-2 text-center mb-3">
+            <div class="col-6">
+              <div class="p-2 bg-light rounded">
+                <small class="text-muted d-block">Weight</small>
+                <span class="fw-bold">{{ goat.weight or "-" }} kg</span>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="p-2 bg-light rounded">
+                <small class="text-muted d-block">Age</small>
+                <span class="fw-bold">{{ goat.calculated_age_months or "-" }} mo</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <small class="text-muted d-block">Type</small>
+            {{ goat.goat_type.name if goat.goat_type else '-' }}
+          </div>
+
+          <div class="mb-3">
+            <small class="text-muted d-block">Sex</small>
+            {% if goat.sex == 'Male' %}
+              <i class="bi bi-gender-male text-primary"></i> Male
+            {% elif goat.sex == 'Female' %}
+              <i class="bi bi-gender-female text-danger"></i> Female
+            {% else %}
+              -
+            {% endif %}
+          </div>
+
+          <div>
+            <small class="text-muted d-block">Location</small>
+            <i class="bi bi-geo-alt text-success"></i> {{ goat.location or "-" }}
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- Advanced Filter Modal -->
+<div class="modal fade" id="advancedFilterModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Advanced Filters</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form id="advancedFilterForm">
+          <div class="row g-3">
+            <!-- Age Range -->
+            <div class="col-md-6">
+              <label class="form-label">Age Range (months)</label>
+              <div class="input-group">
+                <input type="number" class="form-control" name="age_min" placeholder="Min">
+                <span class="input-group-text">to</span>
+                <input type="number" class="form-control" name="age_max" placeholder="Max">
+              </div>
+            </div>
+
+            <!-- Weight Range -->
+            <div class="col-md-6">
+              <label class="form-label">Weight Range (kg)</label>
+              <div class="input-group">
+                <input type="number" class="form-control" name="weight_min" placeholder="Min">
+                <span class="input-group-text">to</span>
+                <input type="number" class="form-control" name="weight_max" placeholder="Max">
+              </div>
+            </div>
+
+            <!-- Location -->
+            <div class="col-md-6">
+              <label class="form-label">Location</label>
+              <select name="location" class="form-select">
+                <option value="">All Locations</option>
+                {% for loc in locations %}
+                  <option value="{{ loc }}">{{ loc }}</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <!-- Type -->
+            <div class="col-md-6">
+              <label class="form-label">Type</label>
+              <select name="type" class="form-select">
+                <option value="">All Types</option>
+                {% for type in goat_types %}
+                  <option value="{{ type.id }}">{{ type.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <!-- Sex -->
+            <div class="col-md-6">
+              <label class="form-label">Sex</label>
+              <select name="sex" class="form-select">
+                <option value="">All</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+              </select>
+            </div>
+
+            <!-- Status -->
+            <div class="col-md-6">
+              <label class="form-label">Status</label>
+              <select name="status" class="form-select">
+                <option value="active">Active</option>
+                <option value="removed">Removed</option>
+                <option value="">All</option>
+              </select>
+            </div>
+
+            <!-- Tags -->
+            <div class="col-12">
+              <label class="form-label">Tags</label>
+              <div class="row g-2">
+                {% for tag in ['sick', 'underweight', 'pregnant', 'ready to mate', 'old', 'new arrival', 'new born', 'matured'] %}
+                  <div class="col-auto">
+                    <input type="checkbox" class="btn-check" name="tags" value="{{ tag }}" 
+                           id="modal-tag-{{ tag|replace(' ', '_') }}">
+                    <label class="btn btn-outline-secondary" for="modal-tag-{{ tag|replace(' ', '_') }}">
+                      {{ tag|capitalize }}
+                    </label>
+                  </div>
+                {% endfor %}
+              </div>
+            </div>
+
+            <!-- Date Ranges -->
+            <div class="col-md-6">
+              <label class="form-label">Date Acquired Range</label>
+              <div class="input-group">
+                <input type="date" class="form-control" name="acquired_start">
+                <span class="input-group-text">to</span>
+                <input type="date" class="form-control" name="acquired_end">
+              </div>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label">Date of Birth Range</label>
+              <div class="input-group">
+                <input type="date" class="form-control" name="dob_start">
+                <span class="input-group-text">to</span>
+                <input type="date" class="form-control" name="dob_end">
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-link" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="applyAdvancedFilters">Apply Filters</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Column Customization Modal -->
+<div class="modal fade" id="columnModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Customize Columns</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="alert alert-info">
+          <i class="bi bi-info-circle"></i> Drag columns to reorder them
+        </div>
+        <div id="columnList" class="list-group">
+          {% for col in ['Tag', 'Type', 'Sex', 'Age', 'Weight', 'Location', 'Status', 'Actions'] %}
+            <div class="list-group-item d-flex align-items-center" draggable="true">
+              <i class="bi bi-grip-vertical me-2"></i>
+              <div class="form-check flex-grow-1">
+                <input class="form-check-input" type="checkbox" value="{{ col|lower }}" 
+                       id="col-{{ col|lower }}" checked>
+                <label class="form-check-label" for="col-{{ col|lower }}">
+                  {{ col }}
+                </label>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-link" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="saveColumns">Save Changes</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Export Modal -->
+<div class="modal fade" id="exportModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Export Data</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form id="exportForm">
+          <!-- Export Format -->
+          <div class="mb-3">
+            <label class="form-label">Export Format</label>
+            <select class="form-select" name="format">
+              <option value="csv">CSV</option>
+              <option value="excel">Excel</option>
+              <option value="pdf">PDF</option>
+            </select>
+          </div>
+
+          <!-- Data Range -->
+          <div class="mb-3">
+            <label class="form-label">Data Range</label>
+            <select class="form-select" name="range">
+              <option value="all">All Data</option>
+              <option value="filtered">Filtered Data Only</option>
+              <option value="selected">Selected Goats Only</option>
+            </select>
+          </div>
+
+          <!-- Columns to Export -->
+          <div class="mb-3">
+            <label class="form-label">Columns to Export</label>
+            <div class="row g-2">
+              {% for col in ['Tag', 'Type', 'Sex', 'Age', 'Weight', 'Location', 'Status', 'Notes'] %}
+                <div class="col-6">
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" value="{{ col|lower }}" 
+                           name="columns" id="export-{{ col|lower }}" checked>
+                    <label class="form-check-label" for="export-{{ col|lower }}">
+                      {{ col }}
+                    </label>
+                  </div>
+                </div>
+              {% endfor %}
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-link" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="startExport">Export</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Bulk Action Modal -->
+<div class="modal fade" id="bulkActionModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Bulk Actions</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="alert alert-info">
+          <i class="bi bi-info-circle"></i> Selected: <span id="selectedCount">0</span> goats
+        </div>
+        <div class="list-group">
+          <button type="button" class="list-group-item list-group-item-action" data-action="export">
+            <i class="bi bi-download"></i> Export Selected
+          </button>
+          <button type="button" class="list-group-item list-group-item-action" data-action="tag">
+            <i class="bi bi-tags"></i> Add/Remove Tags
+          </button>
+          <button type="button" class="list-group-item list-group-item-action" data-action="location">
+            <i class="bi bi-geo-alt"></i> Update Location
+          </button>
+          <button type="button" class="list-group-item list-group-item-action" data-action="vaccine">
+            <i class="bi bi-shield"></i> Record Vaccination
+          </button>
+          <button type="button" class="list-group-item list-group-item-action text-danger" data-action="remove">
+            <i class="bi bi-trash"></i> Remove Selected
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Existing Modals -->
+{% for goat in goats %}
+  {% if goat.status == "active" %}
+    {% if current_user and current_user.has_permission('sickness') %}
+      {{ macros.sickness_modal(goat, now().strftime('%Y-%m-%d')) }}
+    {% endif %}
+    {% if current_user and current_user.has_permission('remove') %}
+      {{ macros.remove_modal(goat, now().strftime('%Y-%m-%d')) }}
+    {% endif %}
+  {% endif %}
+{% endfor %}
+
+<!-- Edit Goat Modal -->
+<div class="modal fade" id="editGoatModal" tabindex="-1">
+  <div class="modal-dialog">
+    <form id="editGoatForm" class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Edit Goat</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="editGoatModalBody">
+        <div class="text-center">
+          <div class="spinner-border" role="status"></div>
+          <p class="text-muted">Loading...</p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-link" data-bs-dismiss="modal">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save Changes</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% block scripts %}
+{{ super() }}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // View Toggle Logic
+  const listViewBtn = document.querySelector('[data-view="list"]');
+  const cardViewBtn = document.querySelector('[data-view="card"]');
+  const listView = document.getElementById('list-view');
+  const cardView = document.getElementById('card-view');
+  
+  // Get saved view preference
+  const savedView = localStorage.getItem('goatListView') || 'list';
+  
+  function setActiveView(view) {
+    if (view === 'list') {
+      listView.style.display = 'block';
+      cardView.style.display = 'none';
+      listViewBtn.classList.add('active');
+      cardViewBtn.classList.remove('active');
+    } else {
+      listView.style.display = 'none';
+      cardView.style.display = 'block';
+      cardViewBtn.classList.add('active');
+      listViewBtn.classList.remove('active');
+    }
+    localStorage.setItem('goatListView', view);
+  }
+
+  // Set initial view
+  setActiveView(savedView);
+
+  // Add click handlers
+  listViewBtn.addEventListener('click', () => setActiveView('list'));
+  cardViewBtn.addEventListener('click', () => setActiveView('card'));
+
+  // Smart Filter Logic
+  const smartFilter = document.getElementById('smartFilter');
+  smartFilter.addEventListener('change', function() {
+    const filterForm = document.getElementById('filterForm');
+    const formData = new FormData(filterForm);
+    
+    // Apply smart filter presets
+    switch(this.value) {
+      case 'need_attention':
+        document.querySelectorAll('input[name="tags"]').forEach(cb => cb.checked = false);
+        document.querySelector('input[value="sick"]').checked = true;
+        document.querySelector('input[value="underweight"]').checked = true;
+        break;
+      case 'ready_mate':
+        document.querySelectorAll('input[name="tags"]').forEach(cb => cb.checked = false);
+        document.querySelector('input[value="ready to mate"]').checked = true;
+        break;
+      case 'pregnant':
+        document.querySelectorAll('input[name="tags"]').forEach(cb => cb.checked = false);
+        document.querySelector('input[value="pregnant"]').checked = true;
+        break;
+      case 'new_arrivals':
+        document.querySelectorAll('input[name="tags"]').forEach(cb => cb.checked = false);
+        document.querySelector('input[value="new arrival"]').checked = true;
+        break;
+      case 'underweight':
+        document.querySelectorAll('input[name="tags"]').forEach(cb => cb.checked = false);
+        document.querySelector('input[value="underweight"]').checked = true;
+        break;
+    }
+    
+    if (this.value) {
+      filterForm.submit();
+    }
+  });
+
+  // Auto-submit filter form on changes
+  document.querySelectorAll('#filterForm input[type="checkbox"]').forEach(checkbox => {
+    checkbox.addEventListener('change', function() {
+      document.getElementById('filterForm').submit();
+    });
+  });
+
+  // Search input with debounce
+  let searchTimeout;
+  const searchInput = document.querySelector('input[name="search"]');
+  searchInput.addEventListener('input', function() {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+      document.getElementById('filterForm').submit();
+    }, 500);
+  });
+
+  // Bulk Selection Logic
+  const selectAllCheckbox = document.getElementById('selectAll');
+  const goatCheckboxes = document.querySelectorAll('.goat-select');
+  const bulkActionBtn = document.getElementById('bulkActionBtn');
+  const bulkActionModal = new bootstrap.Modal(document.getElementById('bulkActionModal'));
+
+  selectAllCheckbox.addEventListener('change', function() {
+    goatCheckboxes.forEach(cb => cb.checked = this.checked);
+    updateBulkActionButton();
+  });
+
+  goatCheckboxes.forEach(checkbox => {
+    checkbox.addEventListener('change', updateBulkActionButton);
+  });
+
+  function updateBulkActionButton() {
+    const selectedCount = document.querySelectorAll('.goat-select:checked').length;
+    document.getElementById('selectedCount').textContent = selectedCount;
+    
+    if (selectedCount > 0) {
+      bulkActionBtn.classList.remove('disabled');
+      bulkActionBtn.textContent = `Bulk Actions (${selectedCount})`;
+    } else {
+      bulkActionBtn.classList.add('disabled');
+      bulkActionBtn.textContent = 'Bulk Actions';
+    }
+  }
+
+  bulkActionBtn.addEventListener('click', function(e) {
+    e.preventDefault();
+    const selectedCount = document.querySelectorAll('.goat-select:checked').length;
+    if (selectedCount > 0) {
+      bulkActionModal.show();
+    }
+  });
+
+  // Advanced Filter Modal
+  const advancedFilterModal = document.getElementById('advancedFilterModal');
+  document.getElementById('applyAdvancedFilters').addEventListener('click', function() {
+    const form = document.getElementById('advancedFilterForm');
+    const formData = new FormData(form);
+    const mainForm = document.getElementById('filterForm');
+    
+    // Copy advanced filter data to main form
+    for (let [key, value] of formData.entries()) {
+      if (value) {
+        let input = mainForm.querySelector(`[name="${key}"]`);
+        if (!input) {
+          input = document.createElement('input');
+          input.type = 'hidden';
+          input.name = key;
+          mainForm.appendChild(input);
+        }
+        input.value = value;
+      }
+    }
+    
+    bootstrap.Modal.getInstance(advancedFilterModal).hide();
+    mainForm.submit();
+  });
+
+  // Column Customization
+  const columnList = document.getElementById('columnList');
+  let draggedElement = null;
+
+  columnList.addEventListener('dragstart', function(e) {
+    draggedElement = e.target;
+    e.target.style.opacity = '0.5';
+  });
+
+  columnList.addEventListener('dragend', function(e) {
+    e.target.style.opacity = '';
+    draggedElement = null;
+  });
+
+  columnList.addEventListener('dragover', function(e) {
+    e.preventDefault();
+  });
+
+  columnList.addEventListener('drop', function(e) {
+    e.preventDefault();
+    if (draggedElement && e.target.classList.contains('list-group-item')) {
+      const rect = e.target.getBoundingClientRect();
+      const midpoint = rect.top + rect.height / 2;
+      
+      if (e.clientY < midpoint) {
+        columnList.insertBefore(draggedElement, e.target);
+      } else {
+        columnList.insertBefore(draggedElement, e.target.nextSibling);
+      }
+    }
+  });
+
+  document.getElementById('saveColumns').addEventListener('click', function() {
+    const columns = Array.from(columnList.querySelectorAll('.form-check-input')).map(input => ({
+      name: input.value,
+      visible: input.checked
+    }));
+    
+    localStorage.setItem('goatListColumns', JSON.stringify(columns));
+    bootstrap.Modal.getInstance(document.getElementById('columnModal')).hide();
+    location.reload(); // Reload to apply column changes
+  });
+
+  // Export Functionality
+  document.getElementById('startExport').addEventListener('click', function() {
+    const form = document.getElementById('exportForm');
+    const formData = new FormData(form);
+    
+    // Create a hidden form for submission
+    const exportForm = document.createElement('form');
+    exportForm.method = 'POST';
+    exportForm.action = '/goats/export';
+    exportForm.style.display = 'none';
+    
+    // Add form data as hidden inputs
+    for (let [key, value] of formData.entries()) {
+      const input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = key;
+      input.value = value;
+      exportForm.appendChild(input);
+    }
+    
+    // Add selected goat IDs if "selected" range is chosen
+    if (formData.get('range') === 'selected') {
+      const selectedIds = Array.from(document.querySelectorAll('.goat-select:checked')).map(cb => cb.value);
+      selectedIds.forEach(id => {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'goat_ids';
+        input.value = id;
+        exportForm.appendChild(input);
+      });
+    }
+    
+    document.body.appendChild(exportForm);
+    exportForm.submit();
+    document.body.removeChild(exportForm);
+    bootstrap.Modal.getInstance(document.getElementById('exportModal')).hide();
+  });
+
+  // Edit Goat Modal
+  const editModal = document.getElementById('editGoatModal');
+  const editModalBody = document.getElementById('editGoatModalBody');
+  const editForm = document.getElementById('editGoatForm');
+  let currentGoatId = null;
+
+  editModal.addEventListener('show.bs.modal', function(event) {
+    const button = event.relatedTarget;
+    currentGoatId = button.getAttribute('data-goat-id');
+    
+    editModalBody.innerHTML = `
+      <div class="text-center">
+        <div class="spinner-border" role="status"></div>
+        <p class="text-muted">Loading...</p>
+      </div>
+    `;
+    
+    fetch(`/goats/ajax_edit/${currentGoatId}`)
+      .then(res => res.text())
+      .then(html => {
+        editModalBody.innerHTML = html;
+      })
+      .catch(err => {
+        editModalBody.innerHTML = '<div class="alert alert-danger">Failed to load goat data</div>';
+      });
+  });
+
+  editForm.addEventListener('submit', function(e) {
+    e.preventDefault();
+    const formData = new FormData(editForm);
+    
+    fetch(`/goats/ajax_edit/${currentGoatId}`, {
+      method: 'POST',
+      body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        bootstrap.Modal.getInstance(editModal).hide();
+        location.reload();
+      } else {
+        alert(data.message || 'Update failed.');
+      }
+    })
+    .catch(err => {
+      alert('Server error occurred.');
+    });
+  });
+
+  // Filter removal
+  document.querySelectorAll('[data-filter-remove]').forEach(button => {
+    button.addEventListener('click', function() {
+      const param = this.getAttribute('data-filter-remove');
+      const url = new URL(window.location);
+      url.searchParams.delete(param);
+      window.location.href = url.toString();
+    });
+  });
+
+  // Initialize tooltips
+  const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+  tooltipTriggerList.map(function (tooltipTriggerEl) {
+    return new bootstrap.Tooltip(tooltipTriggerEl);
+  });
+});
+</script>
+
+<style>
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
+.goat-card {
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.goat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.table th {
+  position: sticky;
+  top: 0;
+  background: white;
+  z-index: 10;
+}
+
+.list-group-item[draggable="true"] {
+  cursor: move;
+}
+
+.list-group-item[draggable="true"]:hover {
+  background-color: #f8f9fa;
+}
+
+.badge {
+  font-size: 0.75em;
+}
+
+.btn-check:checked + .btn {
+  background-color: var(--bs-primary);
+  border-color: var(--bs-primary);
+  color: white;
+}
+
+.table-responsive {
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+.pagination-controls {
+  margin-top: 2rem;
+}
+
+@media (max-width: 768px) {
+  .card-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .d-flex.gap-2 {
+    flex-wrap: wrap;
+  }
+}
+</style>
+{% endblock %}
+{% endblock %}

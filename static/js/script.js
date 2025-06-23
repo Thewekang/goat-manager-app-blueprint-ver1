@@ -7,22 +7,15 @@ document.addEventListener('DOMContentLoaded', function() {
         return new bootstrap.Tooltip(tooltipTriggerEl);
     });
 
-    // Auto-hide alerts after 5 seconds (except permanent ones)
+    // Initialize alerts with close button
     const alerts = document.querySelectorAll('.alert:not(.alert-permanent)');
     alerts.forEach(function(alert) {
-        // Double check that the alert doesn't have alert-permanent class
-        if (!alert.classList.contains('alert-permanent')) {
-            setTimeout(function() {
-                if (alert && alert.parentNode && !alert.classList.contains('alert-permanent')) {
-                    alert.style.transition = 'opacity 0.5s';
-                    alert.style.opacity = '0';
-                    setTimeout(function() {
-                        if (alert.parentNode && !alert.classList.contains('alert-permanent')) {
-                            alert.parentNode.removeChild(alert);
-                        }
-                    }, 500);
-                }
-            }, 5000);
+        if (!alert.querySelector('.btn-close')) {
+            const closeButton = document.createElement('button');
+            closeButton.className = 'btn-close';
+            closeButton.setAttribute('data-bs-dismiss', 'alert');
+            closeButton.setAttribute('aria-label', 'Close');
+            alert.appendChild(closeButton);
         }
     });
 
@@ -118,18 +111,6 @@ function showAlert(message, type = 'info') {
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     `;
     document.body.appendChild(alertDiv);
-    
-    // Auto-remove after 5 seconds
-    setTimeout(function() {
-        if (alertDiv.parentNode) {
-            alertDiv.style.opacity = '0';
-            setTimeout(function() {
-                if (alertDiv.parentNode) {
-                    alertDiv.parentNode.removeChild(alertDiv);
-                }
-            }, 500);
-        }
-    }, 5000);
 }
 
 function formatDate(dateString) {

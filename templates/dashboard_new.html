@@ -1,0 +1,657 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- Welcome Banner -->
+<div class="welcome-banner mb-4">
+  <div class="d-flex justify-content-between align-items-start">
+    <div>
+      <h1 class="mb-1">
+        <i class="bi bi-speedometer2 text-success me-2"></i>Dashboard
+      </h1>
+      <p class="text-muted mb-0">Welcome back, <span class="fw-medium">{{ session.username }}</span>! 🌟</p>
+    </div>
+    <div class="d-flex gap-2">
+      <button class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#dateRangeModal">
+        <i class="bi bi-calendar3"></i> Date Range
+      </button>
+      <div class="dropdown" id="dashboardExportDropdown">
+        <button class="btn btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+          <i class="bi bi-download"></i> Export
+        </button>
+        <ul class="dropdown-menu">
+          <li><a class="dropdown-item" href="#"><i class="bi bi-file-pdf"></i> PDF Report</a></li>
+          <li><a class="dropdown-item" href="#"><i class="bi bi-file-excel"></i> Excel Data</a></li>
+        </ul>
+      </div>
+      
+    </div>
+  </div>
+</div>
+
+<!-- Urgent Alerts Section - Non-dismissible -->
+<div class="row g-3 mb-3">
+  <div class="col-12">
+    <div class="alert-container">
+      <!-- Critical Alerts -->
+      <div class="alert border-0 shadow-sm mb-2 alert-critical" style="background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); color: white;">
+        <div class="d-flex align-items-center">
+          <i class="bi bi-exclamation-triangle-fill fs-4 me-3 pulse-animation"></i>
+          <div class="flex-grow-1">
+            <h6 class="mb-1 fw-bold">🚨 CRITICAL ATTENTION REQUIRED</h6>
+            <div class="d-flex flex-wrap gap-3">
+              <span><i class="bi bi-thermometer-high me-1"></i> 2 Goats Severely Sick</span>
+              <span><i class="bi bi-calendar-x me-1"></i> 3 Vaccines Overdue (>7 days)</span>
+              <span><i class="bi bi-heart-pulse me-1"></i> 1 Emergency Health Issue</span>
+            </div>
+          </div>
+           <a href="{{ url_for('sickness.sick_log') }}" class="btn btn-light btn-sm fw-bold ms-2">View Details</a>
+        </div>
+      </div>
+
+      <!-- High Priority Alerts -->
+      <div class="alert border-0 shadow-sm mb-2 alert-warning-custom" style="background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%); color: #212529;">
+        <div class="d-flex align-items-center">
+          <i class="bi bi-exclamation-circle-fill fs-5 me-3"></i>
+          <div class="flex-grow-1">
+            <h6 class="mb-1 fw-bold">⚠️ HIGH PRIORITY</h6>
+            <div class="d-flex flex-wrap gap-3">
+              <span><i class="bi bi-scale me-1"></i> 4 Underweight Goats</span>
+              <span><i class="bi bi-calendar-event me-1"></i> 5 Vaccines Due Soon</span>
+              <span><i class="bi bi-heart me-1"></i> 2 Breeding Events Overdue</span>
+            </div>
+          </div>
+          <a href="{{ url_for('reports.report_health') }}" class="btn btn-dark btn-sm fw-bold ms-2">Review</a>
+        </div>
+      </div>
+
+      <!-- Medium Priority Alerts -->
+      <div class="alert border-0 shadow-sm mb-2 alert-info-custom" style="background: linear-gradient(135deg, #0dcaf0 0%, #0aa2c0 100%); color: white;">
+        <div class="d-flex align-items-center">
+          <i class="bi bi-info-circle-fill fs-5 me-3"></i>
+          <div class="flex-grow-1">
+            <h6 class="mb-1 fw-bold">ℹ️ ROUTINE ATTENTION</h6>
+            <div class="d-flex flex-wrap gap-3">
+              <span><i class="bi bi-clipboard-check me-1"></i> 8 Health Checkups Due</span>
+              <span><i class="bi bi-graph-up me-1"></i> 3 Weight Monitoring Required</span>
+            </div>
+          </div>
+          <a href="{{ url_for('calendar.calendar') }}" class="btn btn-light btn-sm fw-bold ms-2">Schedule</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Quick Stats Row -->
+<div class="row g-3 mb-4">
+  <!-- Total Goats -->
+  <div class="col-md-3">
+    <div class="card stat-card bg-primary bg-opacity-10 border-0">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <div class="text-primary mb-1"><i class="bi bi-circle-fill"></i> Total Active</div>
+            <h3 class="mb-0">{{ stats.total_goats }}</h3>
+            <small class="text-muted">{{ stats.total_change }}% from last month</small>
+          </div>
+          <div class="text-primary fs-4"><i class="bi bi-collection"></i></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Health Status -->
+  <div class="col-md-3">
+    <div class="card stat-card bg-danger bg-opacity-10 border-0 position-relative">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <div class="text-danger mb-1"><i class="bi bi-circle-fill"></i> Need Attention</div>
+            <h3 class="mb-0">{{ stats.sick_count }}</h3>
+            <small class="text-muted">{{ stats.sick_goats|length }} sick, {{ stats.underweight_count }} underweight</small>
+          </div>
+          <div class="text-danger fs-4"><i class="bi bi-heart-pulse"></i></div>
+        </div>
+        <!-- Urgency Indicator -->
+        <div class="position-absolute top-0 end-0 m-2">
+          <span class="badge bg-danger pulse-animation">URGENT</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Breeding Status -->
+  <div class="col-md-3">
+    <div class="card stat-card bg-success bg-opacity-10 border-0">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <div class="text-success mb-1"><i class="bi bi-circle-fill"></i> Ready to Mate</div>
+            <h3 class="mb-0">{{ stats.ready_to_mate_count }}</h3>
+            <small class="text-muted">{{ stats.pregnant_count }} currently pregnant</small>
+          </div>
+          <div class="text-success fs-4"><i class="bi bi-heart"></i></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Vaccination Status -->
+  <div class="col-md-3">
+    <div class="card stat-card bg-warning bg-opacity-10 border-0 position-relative">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <div class="text-warning mb-1"><i class="bi bi-circle-fill"></i> Due Vaccines</div>
+            <h3 class="mb-0">{{ stats.due_vaccines }}</h3>
+            <small class="text-muted">Next 30 days</small>
+          </div>
+          <div class="text-warning fs-4"><i class="bi bi-shield-check"></i></div>
+        </div>
+        <!-- Urgency Indicator -->
+        <div class="position-absolute top-0 end-0 m-2">
+          <span class="badge bg-warning text-dark">HIGH</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Main Analytics Section -->
+<div class="row g-4 mb-4">
+  <!-- Primary Charts Row -->
+  <div class="col-lg-8">
+    <!-- Population by Type Chart -->
+    <div class="card h-100">
+      <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Population Overview</h5>
+        <div class="btn-group view-toggle">
+          <button type="button" class="btn btn-sm btn-outline-secondary active" data-view="chart">Chart</button>
+          <button type="button" class="btn btn-sm btn-outline-secondary" data-view="table">Table</button>
+        </div>
+      </div>
+      <div class="card-body">
+        <div id="chartView">
+          <canvas id="populationChart" height="280"></canvas>
+        </div>
+        <div id="tableView" style="display: none;">
+          <div class="table-responsive">
+            <table class="table table-hover">
+              <thead>
+                <tr>
+                  <th>Breed Type</th>
+                  <th>Male</th>
+                  <th>Female</th>
+                  <th>Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Katjang</td>
+                  <td>12</td>
+                  <td>15</td>
+                  <td>27</td>
+                </tr>
+                <tr>
+                  <td>Boer</td>
+                  <td>19</td>
+                  <td>22</td>
+                  <td>41</td>
+                </tr>
+                <tr>
+                  <td>Jamnapari</td>
+                  <td>8</td>
+                  <td>10</td>
+                  <td>18</td>
+                </tr>
+                <tr>
+                  <td>Saanen</td>
+                  <td>15</td>
+                  <td>18</td>
+                  <td>33</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Health & Vaccination Metrics -->
+  <div class="col-lg-4">
+    <div class="row g-3 h-100">
+      <!-- Health Trends - Compact -->
+      <div class="col-12">
+        <div class="card h-100">
+          <div class="card-header bg-transparent border-0 py-2">
+            <h6 class="mb-0">Health Trends</h6>
+          </div>
+          <div class="card-body py-2">
+            <canvas id="healthTrendsChart" height="120"></canvas>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Vaccination Compliance - Compact -->
+      <div class="col-12">
+        <div class="card h-100">
+          <div class="card-header bg-transparent border-0 py-2">
+            <h6 class="mb-0">Vaccination Status</h6>
+          </div>
+          <div class="card-body py-2">
+            <canvas id="vaccinationChart" height="120"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Secondary Analytics Row -->
+<div class="row g-4 mb-4">
+  <!-- Weight & Age Distribution -->
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-header bg-transparent border-0">
+        <h5 class="mb-0">Weight Distribution</h5>
+      </div>
+      <div class="card-body">
+        <canvas id="weightChart" height="200"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-header bg-transparent border-0">
+        <h5 class="mb-0">Age Distribution</h5>
+      </div>
+      <div class="card-body">
+        <canvas id="ageDistributionChart" height="200"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Activity & Actions Section -->
+<div class="row g-4">
+  <!-- Recent Activity -->
+  <div class="col-lg-4">
+    <div class="card h-100">
+      <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Recent Activity</h5>
+        <a href="#" class="text-muted text-decoration-none small">View All</a>
+      </div>
+      <div class="card-body p-0" style="max-height: 300px; overflow-y: auto;">
+        <div class="list-group list-group-flush">
+          {% for activity in recent_activities %}
+          <div class="list-group-item border-0 py-2">
+            <div class="d-flex w-100 justify-content-between">
+              <h6 class="mb-1 small">{{ activity.title }}</h6>
+              <small class="text-muted">{{ activity.time }}</small>
+            </div>
+            <p class="mb-0 text-muted small">{{ activity.description }}</p>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Actions -->
+  <div class="col-lg-4 d-flex">
+    <div class="card h-100 w-100">
+      <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="bi bi-lightning text-warning me-2"></i>Quick Actions</h5>
+      </div>
+      <!-- The magic is in these classes below! -->
+      <div class="card-body d-flex flex-column justify-content-evenly">
+        <div class="d-flex flex-column gap-3 flex-grow-1 justify-content-evenly">
+          <a href="{{ url_for('goats.add_goat') }}" class="btn btn-outline-success btn-lg w-100">
+            <i class="bi bi-plus-circle"></i> Add New Goat
+          </a>
+          <a href="{{ url_for('vaccine.batch_vaccine_entry') }}" class="btn btn-outline-primary btn-lg w-100">
+            <i class="bi bi-shield-plus"></i> Record Vaccination
+          </a>
+          <a href="{{ url_for('breeding.list_breeding') }}" class="btn btn-outline-warning btn-lg w-100">
+            <i class="bi bi-heart"></i> Manage Breeding
+          </a>
+          <a href="{{ url_for('reports.report_health') }}" class="btn btn-outline-info btn-lg w-100">
+            <i class="bi bi-file-earmark-text"></i> Generate Report
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Upcoming Events -->
+  <div class="col-lg-4">
+    <div class="card h-100">
+      <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Upcoming Events</h5>
+        <a href="{{ url_for('calendar.calendar') }}" class="text-muted text-decoration-none small">Calendar</a>
+      </div>
+      <div class="card-body p-0" style="max-height: 300px; overflow-y: auto;">
+        <div class="list-group list-group-flush">
+          {% for event in upcoming_events %}
+          <div class="list-group-item border-0 py-2">
+            <div class="d-flex align-items-center">
+              <div class="event-date text-center me-3 bg-light rounded p-2" style="min-width: 50px;">
+                <div class="small text-uppercase text-muted fw-bold">{{ event.month }}</div>
+                <div class="h6 mb-0 text-primary">{{ event.day }}</div>
+              </div>
+              <div class="flex-grow-1">
+                <h6 class="mb-0 small">{{ event.title }}</h6>
+                <small class="text-muted">{{ event.description }}</small>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Date Range Modal -->
+<div class="modal fade" id="dateRangeModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header border-0">
+        <h5 class="modal-title">Select Date Range</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form id="dateRangeForm">
+          <div class="mb-3">
+            <label class="form-label">Preset Ranges</label>
+            <select class="form-select mb-3" id="presetRange">
+              <option value="7">Last 7 Days</option>
+              <option value="30" selected>Last 30 Days</option>
+              <option value="90">Last 90 Days</option>
+              <option value="365">Last Year</option>
+              <option value="custom">Custom Range</option>
+            </select>
+          </div>
+          <div class="row g-3" id="customDateRange" style="display: none;">
+            <div class="col-6">
+              <label class="form-label">Start Date</label>
+              <input type="date" class="form-control" name="start_date" id="startDate">
+            </div>
+            <div class="col-6">
+              <label class="form-label">End Date</label>
+              <input type="date" class="form-control" name="end_date" id="endDate">
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer border-0">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="applyDateRange">Apply</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Handle Date Range Modal
+  const presetRange = document.getElementById('presetRange');
+  const customDateRange = document.getElementById('customDateRange');
+  const startDate = document.getElementById('startDate');
+  const endDate = document.getElementById('endDate');
+  const applyDateRange = document.getElementById('applyDateRange');
+
+  presetRange.addEventListener('change', function() {
+    if (this.value === 'custom') {
+      customDateRange.style.display = 'flex';
+    } else {
+      customDateRange.style.display = 'none';
+    }
+  });
+
+  applyDateRange.addEventListener('click', function() {
+    let range = presetRange.value;
+    let params = new URLSearchParams(window.location.search);
+    
+    if (range === 'custom') {
+      if (startDate.value && endDate.value) {
+        params.set('start_date', startDate.value);
+        params.set('end_date', endDate.value);
+      }
+    } else {
+      params.set('days', range);
+    }
+    
+    window.location.href = window.location.pathname + '?' + params.toString();
+  });
+
+  // Handle Export Actions (scoped to dashboard export dropdown only)
+  document.querySelectorAll('#dashboardExportDropdown .dropdown-item').forEach(item => {
+    item.addEventListener('click', function(e) {
+      e.preventDefault();
+      let format = this.textContent.toLowerCase().includes('pdf') ? 'pdf' : 'excel';
+      if (confirm(`Are you sure you want to export the dashboard data as ${format.toUpperCase()}?`)) {
+        let params = new URLSearchParams(window.location.search);
+        params.set('export', format);
+        window.open(window.location.pathname + '?' + params.toString(), '_blank');
+      }
+    });
+  });
+
+  // Population Chart
+  const populationCtx = document.getElementById('populationChart').getContext('2d');
+  new Chart(populationCtx, {
+    type: 'bar',
+    data: {
+      labels: ['Katjang', 'Boer', 'Jamnapari', 'Saanen'],
+      datasets: [{
+        label: 'Male',
+        data: [12, 19, 8, 15],
+        backgroundColor: 'rgba(54, 162, 235, 0.5)',
+        borderColor: 'rgba(54, 162, 235, 1)',
+        borderWidth: 1
+      },
+      {
+        label: 'Female',
+        data: [15, 22, 10, 18],
+        backgroundColor: 'rgba(255, 99, 132, 0.5)',
+        borderColor: 'rgba(255, 99, 132, 1)',
+        borderWidth: 1
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: {
+          position: 'top',
+        },
+        title: {
+          display: false
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true
+        }
+      }
+    }
+  });
+
+  // Weight Distribution Chart
+  const weightCtx = document.getElementById('weightChart').getContext('2d');
+  new Chart(weightCtx, {
+    type: 'line',
+    data: {
+      labels: ['0-10kg', '11-20kg', '21-30kg', '31-40kg', '41-50kg', '50kg+'],
+      datasets: [{
+        label: 'Number of Goats',
+        data: [5, 12, 18, 15, 8, 3],
+        fill: true,
+        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+        borderColor: 'rgba(75, 192, 192, 1)',
+        tension: 0.4
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: {
+          display: false
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true
+        }
+      }
+    }
+  });
+  // Health Trends Chart
+  const healthCtx = document.getElementById('healthTrendsChart').getContext('2d');
+  new Chart(healthCtx, {
+    type: 'line',
+    data: {
+      labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
+      datasets: [{
+        label: 'Sick Cases',
+        data: [4, 2, 3, 1],
+        borderColor: 'rgba(220, 53, 69, 1)',
+        backgroundColor: 'rgba(220, 53, 69, 0.1)',
+        fill: true,
+        tension: 0.4
+      },
+      {
+        label: 'Recovered',
+        data: [2, 3, 2, 2],
+        borderColor: 'rgba(25, 135, 84, 1)',
+        backgroundColor: 'rgba(25, 135, 84, 0.1)',
+        fill: true,
+        tension: 0.4
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: {
+          position: 'top'
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: {
+            stepSize: 1
+          }
+        }
+      }
+    }
+  });
+
+  // Vaccination Compliance Chart
+  const vaccineCtx = document.getElementById('vaccinationChart').getContext('2d');
+  new Chart(vaccineCtx, {
+    type: 'doughnut',
+    data: {
+      labels: ['Up to Date', 'Due Soon', 'Overdue'],
+      datasets: [{
+        data: [70, 20, 10],
+        backgroundColor: [
+          'rgba(25, 135, 84, 0.8)',
+          'rgba(255, 193, 7, 0.8)',
+          'rgba(220, 53, 69, 0.8)'
+        ],
+        borderColor: [
+          'rgba(25, 135, 84, 1)',
+          'rgba(255, 193, 7, 1)',
+          'rgba(220, 53, 69, 1)'
+        ],
+        borderWidth: 1
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: {
+          position: 'right'
+        }
+      }
+    }
+  });
+
+  // Age Distribution Chart
+  const ageCtx = document.getElementById('ageDistributionChart').getContext('2d');
+  new Chart(ageCtx, {
+    type: 'bar',
+    data: {
+      labels: ['0-6 months', '6-12 months', '1-2 years', '2-3 years', '3+ years'],
+      datasets: [{
+        label: 'Number of Goats',
+        data: [15, 25, 20, 12, 8],
+        backgroundColor: [
+          'rgba(13, 110, 253, 0.5)',
+          'rgba(102, 16, 242, 0.5)',
+          'rgba(111, 66, 193, 0.5)',
+          'rgba(214, 51, 132, 0.5)',
+          'rgba(220, 53, 69, 0.5)'
+        ],
+        borderColor: [
+          'rgba(13, 110, 253, 1)',
+          'rgba(102, 16, 242, 1)',
+          'rgba(111, 66, 193, 1)',
+          'rgba(214, 51, 132, 1)',
+          'rgba(220, 53, 69, 1)'
+        ],
+        borderWidth: 1
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: {
+          display: false
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: {
+            stepSize: 5
+          }
+        }
+      }
+    }
+  });
+
+  // Toggle between chart and table views
+  document.querySelector('.view-toggle').addEventListener('click', function(e) {
+    if (e.target.matches('button')) {
+      e.preventDefault(); // Prevent any default action
+      
+      // Update button states
+      this.querySelectorAll('button').forEach(btn => btn.classList.remove('active'));
+      e.target.classList.add('active');
+      
+      // Toggle views
+      const view = e.target.dataset.view;
+      const chartView = document.getElementById('chartView');
+      const tableView = document.getElementById('tableView');
+      
+      if (view === 'table') {
+        chartView.style.display = 'none';
+        tableView.style.display = 'block';
+      } else {
+        chartView.style.display = 'block';
+        tableView.style.display = 'none';
+      }
+    }
+  });
+});
+</script>
+{% endblock %}

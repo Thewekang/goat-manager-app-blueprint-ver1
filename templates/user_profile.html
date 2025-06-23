@@ -3,7 +3,7 @@
 
 <h2>My Profile</h2>
 
-<form method="POST" action="{{ url_for('user_profile') }}" class="p-3">
+<form method="POST" action="{{ url_for('users.user_profile') }}" class="p-3">
   <div class="mb-3">
     <label for="username" class="form-label">Username</label>
     <input type="text" class="form-control" value="{{ current_user.username }}" readonly>
@@ -31,7 +31,8 @@
 
 <h3>Change Password</h3>
 
-<form method="POST" action="{{ url_for('change_password') }}" class="p-3">
+<form method="POST" action="{{ url_for('users.change_password') }}" class="p-3">
+
   <div class="mb-3">
     <label for="current_password" class="form-label">Current Password</label>
     <input type="password" name="current_password" class="form-control" required>

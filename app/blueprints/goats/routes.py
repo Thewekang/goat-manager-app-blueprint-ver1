@@ -1,4 +1,6 @@
-from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify
+from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify, Response
+import csv
+from io import StringIO
 from ...models import Goat, GoatType, Sickness, SicknessPhoto, Removal, WeightLog, GoatFeedback, GoatFeedbackPhoto, VaccineType, VaccinationEvent, BreedingEvent, User
 from ...extensions import db
 from ...utils import require_permission, require_any_role, get_vaccine_due_info, get_target_weight
@@ -14,20 +16,53 @@ def list_goats():
         flash("Please login first.", "warning")
         return redirect(url_for("auth.login"))
 
+    # Get filter parameters
     selected_tags = request.args.getlist('tags')
     selected_location = request.args.get("location")
+    search_query = request.args.get("search", "").strip()
+    smart_filter = request.args.get("smart_filter")
+    
+    # Advanced filter parameters
+    age_min = request.args.get("age_min", type=int)
+    age_max = request.args.get("age_max", type=int)
+    weight_min = request.args.get("weight_min", type=float)
+    weight_max = request.args.get("weight_max", type=float)
+    goat_type_id = request.args.get("type", type=int)
+    sex_filter = request.args.get("sex")
+    status_filter = request.args.get("status", "active")
+    acquired_start = request.args.get("acquired_start")
+    acquired_end = request.args.get("acquired_end")
+    dob_start = request.args.get("dob_start")
+    dob_end = request.args.get("dob_end")
+
+    # Get all locations and goat types for filters
     locations = db.session.query(Goat.location).distinct().all()
     locations = [loc[0] for loc in locations if loc[0]]
+    goat_types = GoatType.query.order_by(GoatType.name).all()
 
-    goats = Goat.query.filter_by(status="active").all()
+    # Base query
+    if status_filter == "all":
+        goats = Goat.query.all()
+    else:
+        goats = Goat.query.filter_by(status=status_filter).all()
 
-    if selected_tags:
-        goats = [g for g in goats if hasattr(g, "tags") and any(tag in g.tags for tag in selected_tags)]
-    if selected_location:
-        goats = [g for g in goats if g.location == selected_location]
+    # Apply smart filters
+    if smart_filter:
+        if smart_filter == "need_attention":
+            selected_tags = ["sick", "underweight"]
+        elif smart_filter == "ready_mate":
+            selected_tags = ["ready to mate"]
+        elif smart_filter == "pregnant":
+            selected_tags = ["pregnant"]
+        elif smart_filter == "new_arrivals":
+            selected_tags = ["new arrival"]
+        elif smart_filter == "underweight":
+            selected_tags = ["underweight"]
 
-    # Calculate age for each goat
+    # Calculate age and apply filters
+    filtered_goats = []
     for goat in goats:
+        # Calculate age
         if goat.dob:
             age_days = (datetime.now().date() - datetime.strptime(goat.dob, '%Y-%m-%d').date()).days
             goat.calculated_age_months = round(age_days / 30.44, 1)
@@ -36,19 +71,102 @@ def list_goats():
         else:
             goat.calculated_age_months = None
 
+        # Apply filters
+        if selected_tags and not (hasattr(goat, "tags") and any(tag in goat.tags for tag in selected_tags)):
+            continue
+        
+        if selected_location and goat.location != selected_location:
+            continue
+            
+        if search_query:
+            search_fields = [
+                goat.tag or "",
+                goat.goat_type.name if goat.goat_type else "",
+                goat.location or "",
+                goat.notes or ""
+            ]
+            if not any(search_query.lower() in field.lower() for field in search_fields):
+                continue
+        
+        if age_min is not None and (goat.calculated_age_months is None or goat.calculated_age_months < age_min):
+            continue
+            
+        if age_max is not None and (goat.calculated_age_months is None or goat.calculated_age_months > age_max):
+            continue
+            
+        if weight_min is not None and (goat.weight is None or goat.weight < weight_min):
+            continue
+            
+        if weight_max is not None and (goat.weight is None or goat.weight > weight_max):
+            continue
+            
+        if goat_type_id and goat.goat_type_id != goat_type_id:
+            continue
+            
+        if sex_filter and goat.sex != sex_filter:
+            continue
+            
+        if acquired_start and (not goat.date_acquired or goat.date_acquired < acquired_start):
+            continue
+            
+        if acquired_end and (not goat.date_acquired or goat.date_acquired > acquired_end):
+            continue
+            
+        if dob_start and (not goat.dob or goat.dob < dob_start):
+            continue
+            
+        if dob_end and (not goat.dob or goat.dob > dob_end):
+            continue
+
+        filtered_goats.append(goat)
+
+    # Calculate statistics
+    stats = {
+        'active_count': len([g for g in filtered_goats if g.status == "active"]),
+        'sick_count': len([g for g in filtered_goats if hasattr(g, "tags") and "sick" in g.tags]),
+        'underweight_count': len([g for g in filtered_goats if hasattr(g, "tags") and "underweight" in g.tags]),
+        'pregnant_count': len([g for g in filtered_goats if hasattr(g, "tags") and "pregnant" in g.tags]),
+        'ready_to_mate_count': len([g for g in filtered_goats if hasattr(g, "tags") and "ready to mate" in g.tags])
+    }
+
+    # Build selected filters for display
+    selected_filters = []
+    if selected_tags:
+        for tag in selected_tags:
+            selected_filters.append({'label': f'Tag: {tag.capitalize()}', 'param': 'tags'})
+    if selected_location:
+        selected_filters.append({'label': f'Location: {selected_location}', 'param': 'location'})
+    if search_query:
+        selected_filters.append({'label': f'Search: {search_query}', 'param': 'search'})
+    if age_min is not None:
+        selected_filters.append({'label': f'Min Age: {age_min}mo', 'param': 'age_min'})
+    if age_max is not None:
+        selected_filters.append({'label': f'Max Age: {age_max}mo', 'param': 'age_max'})
+    if weight_min is not None:
+        selected_filters.append({'label': f'Min Weight: {weight_min}kg', 'param': 'weight_min'})
+    if weight_max is not None:
+        selected_filters.append({'label': f'Max Weight: {weight_max}kg', 'param': 'weight_max'})
+
     alerts = {}
-    for goat in goats:
+    for goat in filtered_goats:
         target = get_target_weight(goat)
         if target and goat.weight and goat.weight < target:
             alerts[goat.tag] = f"Underweight! (target ≥ {target} kg)"
 
+    # Always use new template
+    template_name = "goat_list_new.html"
+
     return render_template(
-        "goat_list.html",
-        goats=goats,
+        template_name,
+        goats=filtered_goats,
         locations=locations,
+        goat_types=goat_types,
         selected_location=selected_location,
         alerts=alerts,
-        selected_tags=selected_tags
+        selected_tags=selected_tags,
+        selected_filters=selected_filters,
+        stats=stats,
+        now=datetime.now
     )
 
 @goats_bp.route("/goats/add", methods=["GET", "POST"])
@@ -376,6 +494,79 @@ def delete_goat_feedback(tag, fb_id):
 
     flash("Feedback deleted successfully.", "success")
     return redirect(url_for("goats.goat_detail", tag=tag))
+
+@goats_bp.route("/goats/export", methods=["POST"])
+def export_goats():
+    if not session.get("username"):
+        flash("Please login first.", "warning")
+        return redirect(url_for("auth.login"))
+
+    # Get form data
+    export_format = request.form.get('format', 'csv')
+    data_range = request.form.get('range', 'all')
+    selected_columns = request.form.getlist('columns')
+    goat_ids = request.form.getlist('goat_ids')
+
+    # Get goats based on range
+    if data_range == 'selected' and goat_ids:
+        goats = Goat.query.filter(Goat.id.in_(goat_ids)).all()
+    else:
+        goats = Goat.query.filter_by(status="active").all()
+
+    # Create CSV data
+    output = StringIO()
+    writer = csv.writer(output)
+    
+    # Write headers
+    headers = []
+    for col in selected_columns:
+        if col == 'tag':
+            headers.append('Tag')
+        elif col == 'type':
+            headers.append('Type')
+        elif col == 'sex':
+            headers.append('Sex')
+        elif col == 'age':
+            headers.append('Age (months)')
+        elif col == 'weight':
+            headers.append('Weight (kg)')
+        elif col == 'location':
+            headers.append('Location')
+        elif col == 'status':
+            headers.append('Status')
+        elif col == 'notes':
+            headers.append('Notes')
+    writer.writerow(headers)
+
+    # Write data rows
+    for goat in goats:
+        row = []
+        for col in selected_columns:
+            if col == 'tag':
+                row.append(goat.tag)
+            elif col == 'type':
+                row.append(goat.goat_type.name if goat.goat_type else '-')
+            elif col == 'sex':
+                row.append(goat.sex)
+            elif col == 'age':
+                row.append(str(goat.calculated_age_months) if goat.calculated_age_months else '-')
+            elif col == 'weight':
+                row.append(str(goat.weight) if goat.weight else '-')
+            elif col == 'location':
+                row.append(goat.location or '-')
+            elif col == 'status':
+                row.append(goat.status)
+            elif col == 'notes':
+                row.append(goat.notes or '-')
+        writer.writerow(row)
+
+    # Create response
+    output.seek(0)
+    return Response(
+        output.getvalue(),
+        mimetype='text/csv',
+        headers={'Content-Disposition': 'attachment; filename=goats_export.csv'}
+    )
 
 @goats_bp.route("/goats/<tag>/feedback/<int:fb_id>/edit", methods=["POST"])
 @require_any_role("worker","admin", "superadmin")

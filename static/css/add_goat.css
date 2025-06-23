@@ -1,0 +1,35 @@
+/* Custom styles for Add Goat form */
+.container .card {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.form-label {
+  font-weight: 600;
+  color: #333;
+}
+
+.form-control:focus {
+  border-color: #198754;
+  box-shadow: 0 0 0 0.25rem rgba(25, 135, 84, 0.25);
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.btn-success {
+  background-color: #198754;
+  border-color: #198754;
+  font-weight: 600;
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.btn-success:hover,
+.btn-success:focus {
+  background-color: #157347;
+  border-color: #146c43;
+  box-shadow: 0 0 8px rgba(21, 115, 71, 0.6);
+}
+
+.form-text {
+  font-size: 0.85rem;
+  color: #6c757d;
+}

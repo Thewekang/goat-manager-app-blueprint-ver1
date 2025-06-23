@@ -9,6 +9,7 @@ import os
 
 dashboard_bp = Blueprint("dashboard", __name__)
 
+# No changes needed, route for quickentry already exists and is correct
 @dashboard_bp.route("/quickentry", methods=["GET", "POST"])
 def quickentry():
     if not session.get("username"):
@@ -84,7 +85,6 @@ def quickentry():
 
         elif action == "mark_pregnancy":
             selected_goat_ids = request.form.getlist("pregnant_goat_ids")
-            all_ids = [str(g.id) for g in goats]
             for goat in goats:
                 goat.is_pregnant = str(goat.id) in selected_goat_ids
             db.session.commit()
@@ -107,14 +107,15 @@ def quickentry():
                 status='active'
             )
             db.session.add(s)
-            db.session.commit()
+            db.session.commit()  # We need the Sickness.id!
 
+            # --- Multi-photo upload ---
             if "photos" in request.files:
                 photos = request.files.getlist("photos")
                 for photo in photos:
                     if photo and photo.filename:
                         filename = secure_filename(f"sick_{goat_id}_{date}_{photo.filename}")
-                        save_path = os.path.join("static/uploads", filename)
+                        save_path = os.path.join("static", "uploads", filename)
                         photo.save(save_path)
                         sp = SicknessPhoto(sickness_id=s.id, image_path=save_path)
                         db.session.add(sp)
@@ -133,6 +134,7 @@ def quickentry():
         selected_type=selected_type,
     )
 
+
 @dashboard_bp.route("/")
 def home():
     if session.get("username"):
@@ -141,88 +143,175 @@ def home():
 
 @dashboard_bp.route("/dashboard")
 def dashboard_home():
-    config = FarmConfig.query.first()
-    goat_types = GoatType.query.order_by(GoatType.name).all()
+    if not session.get("username"):
+        flash("Please login first.", "warning")
+        return redirect(url_for("auth.login"))
 
-    total_goats = Goat.query.filter_by(status="active").count()
-    removed_goats = Goat.query.filter_by(status="removed").count()
-    avg_weight = db.session.query(func.avg(Goat.weight)).filter_by(status="active").scalar() or 0
+    # Handle export requests
+    export_format = request.args.get('export')
+    if export_format:
+        return handle_dashboard_export(export_format)
 
-    acquisition_counts = db.session.query(
-        Goat.acquisition_method, func.count(Goat.id)
-    ).group_by(Goat.acquisition_method).all()
+    # Handle date range filtering
+    days = request.args.get('days', '30')
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
+    
+    if start_date and end_date:
+        date_filter_start = datetime.strptime(start_date, '%Y-%m-%d')
+        date_filter_end = datetime.strptime(end_date, '%Y-%m-%d')
+    else:
+        date_filter_end = datetime.now()
+        date_filter_start = date_filter_end - timedelta(days=int(days))
 
-    goats_by_type = [
-        Goat.query.filter_by(goat_type_id=gt.id, status="active").count() for gt in goat_types
-    ]
-
-    sickness_types = db.session.query(Sickness.sickness, func.count(Sickness.id)).group_by(Sickness.sickness).all()
-    sickness_labels = [s[0] for s in sickness_types]
-    sickness_counts = [s[1] for s in sickness_types]
-
-    now = datetime.now()
-    one_week_ago = (now - timedelta(days=7)).strftime('%Y-%m-%d')
-    weekly_new_goats = Goat.query.filter(Goat.status == "active", Goat.dob >= one_week_ago).count()
-
-    removals_by_reason = db.session.query(Removal.reason, func.count(Removal.id)).group_by(Removal.reason).all()
-    removal_labels = [r[0] for r in removals_by_reason]
-    removal_counts = [r[1] for r in removals_by_reason]
-
-    ready_does = get_ready_does()
-    num_ready_does = len(ready_does)
-
-    recent_breedings = BreedingEvent.query.order_by(BreedingEvent.mating_start_date.desc()).limit(5).all()
-
-    today = datetime.now().date()
-    upcoming_vax = []
-    overdue_vax = []
-
-    for goat in Goat.query.filter_by(status="active").all():
-        due_info = get_vaccine_due_info(goat)
-        for v in due_info:
-            if v["status"] == "overdue":
-                overdue_vax.append({
-                    "goat": goat,
-                    "vaccine": v["vaccine"].name,
-                    "vaccine_id": v["vaccine"].id,
-                    "due": v["next_due"]
-                })
-            elif v["status"] == "due" and (v["next_due"] - today).days <= 7:
-                upcoming_vax.append({
-                    "goat": goat,
-                    "vaccine": v["vaccine"].name,
-                    "vaccine_id": v["vaccine"].id,
-                    "due": v["next_due"]
-                })
-
+    # Get all active goats
     goats = Goat.query.filter_by(status="active").all()
-    sick_goats = [g for g in goats if hasattr(g, "tags") and 'sick' in g.tags]
-    num_sick_goats = len(sick_goats)
-    underweight = [g for g in goats if get_target_weight(g) and g.weight and g.weight < get_target_weight(g)]
-    num_underweight = len(underweight)
-    vaccine_type_ids = {vt.name: vt.id for vt in VaccineType.query.all()}
+    
+    # Calculate statistics
+    total_goats = len(goats)
+    last_month = datetime.now() - timedelta(days=30)
+    total_last_month = Goat.query.filter(
+        Goat.status == "active",
+        Goat.date_acquired <= last_month.strftime('%Y-%m-%d')
+    ).count()
+    total_change = round(((total_goats - total_last_month) / total_last_month * 100), 1) if total_last_month > 0 else 0
 
-    return render_template("dashboard.html",
-        total=total_goats,
-        removed=removed_goats,
-        avg_weight=round(avg_weight, 2),
-        goats_by_type=goats_by_type,
-        goat_types=[gt.name for gt in goat_types],
-        sickness_labels=sickness_labels,
-        sickness_counts=sickness_counts,
-        weekly_new_goats=weekly_new_goats,
-        removal_labels=removal_labels,
-        removal_counts=removal_counts,
-        num_ready_does=num_ready_does,
-        recent_breedings=recent_breedings,
-        overdue_vax=overdue_vax,
-        upcoming_vax=upcoming_vax,
-        num_underweight=num_underweight,
-        underweight=underweight,
-        vaccine_type_ids=vaccine_type_ids,
-        sick_goats=sick_goats,
-        num_sick_goats=num_sick_goats
+    # Health statistics
+    sick_goats = [g for g in goats if hasattr(g, "tags") and "sick" in g.tags]
+    underweight_goats = [g for g in goats if get_target_weight(g) and g.weight and g.weight < get_target_weight(g)]
+    ready_to_mate = [g for g in goats if hasattr(g, "tags") and "ready to mate" in g.tags]
+    pregnant = [g for g in goats if hasattr(g, "tags") and "pregnant" in g.tags]
+
+    # Get upcoming vaccinations
+    upcoming_vaccines = []
+    for goat in goats:
+        due_info = get_vaccine_due_info(goat)
+        for info in due_info:
+            if info["next_due"]:
+                upcoming_vaccines.append({
+                    "goat": goat,
+                    "vaccine": info["vaccine"],
+                    "due_date": info["next_due"]
+                })
+    
+    # Sort by due date and get next 30 days
+    upcoming_vaccines.sort(key=lambda x: x["due_date"])
+    due_vaccines = len([v for v in upcoming_vaccines if (v["due_date"] - datetime.now().date()).days <= 30])
+
+    # Get recent activities (filtered by date range)
+    recent_activities = []
+    
+    # Add recent weight logs
+    weight_logs = WeightLog.query.filter(
+        WeightLog.created_at >= date_filter_start,
+        WeightLog.created_at <= date_filter_end
+    ).order_by(WeightLog.created_at.desc()).limit(5).all()
+    
+    for log in weight_logs:
+        recent_activities.append({
+            "title": f"Weight Update: {log.goat.tag}",
+            "description": f"New weight: {log.weight}kg",
+            "time": log.created_at.strftime("%b %d")
+        })
+
+    # Add recent sickness records
+    sickness_logs = Sickness.query.filter(
+        Sickness.created_at >= date_filter_start,
+        Sickness.created_at <= date_filter_end
+    ).order_by(Sickness.created_at.desc()).limit(5).all()
+    
+    for log in sickness_logs:
+        recent_activities.append({
+            "title": f"Health Issue: {log.goat.tag}",
+            "description": f"Condition: {log.sickness}",
+            "time": log.created_at.strftime("%b %d")
+        })
+
+    # Sort activities by time and keep only most recent 5
+    recent_activities = recent_activities[:5]
+
+    # Get upcoming events
+    upcoming_events = []
+    
+    # Add upcoming vaccinations
+    for vaccine in upcoming_vaccines[:3]:
+        upcoming_events.append({
+            "month": vaccine["due_date"].strftime("%b"),
+            "day": vaccine["due_date"].strftime("%d"),
+            "title": f"Vaccination Due: {vaccine['goat'].tag}",
+            "description": f"{vaccine['vaccine'].name}"
+        })
+
+    # Add upcoming breeding events
+    breeding_events = BreedingEvent.query.filter(
+        BreedingEvent.status == "scheduled"
+    ).order_by(BreedingEvent.mating_start_date).limit(3).all()
+    
+    for event in breeding_events:
+        upcoming_events.append({
+            "month": datetime.strptime(event.mating_start_date, "%Y-%m-%d").strftime("%b"),
+            "day": datetime.strptime(event.mating_start_date, "%Y-%m-%d").strftime("%d"),
+            "title": "Breeding Event",
+            "description": f"Buck: {event.buck.tag}, Doe: {event.doe.tag}"
+        })
+
+    # Prepare statistics
+    stats = {
+        "total_goats": total_goats,
+        "total_change": total_change,
+        "sick_count": len(sick_goats),
+        "underweight_count": len(underweight_goats),
+        "ready_to_mate_count": len(ready_to_mate),
+        "pregnant_count": len(pregnant),
+        "due_vaccines": due_vaccines,
+        "sick_goats": sick_goats
+    }
+
+    return render_template(
+        "dashboard_new.html",
+        stats=stats,
+        goats=goats,
+        recent_activities=recent_activities,
+        upcoming_events=upcoming_events
     )
+
+def handle_dashboard_export(format_type):
+    """Handle dashboard data export"""
+    from flask import make_response
+    import csv
+    import io
+    
+    if format_type == 'excel':
+        # Create CSV data for Excel
+        output = io.StringIO()
+        writer = csv.writer(output)
+        
+        # Write headers
+        writer.writerow(['Metric', 'Value', 'Description'])
+        
+        # Get current stats
+        goats = Goat.query.filter_by(status="active").all()
+        total_goats = len(goats)
+        sick_goats = [g for g in goats if hasattr(g, "tags") and "sick" in g.tags]
+        underweight_goats = [g for g in goats if get_target_weight(g) and g.weight and g.weight < get_target_weight(g)]
+        
+        # Write data
+        writer.writerow(['Total Active Goats', total_goats, 'Current active goat count'])
+        writer.writerow(['Sick Goats', len(sick_goats), 'Goats currently marked as sick'])
+        writer.writerow(['Underweight Goats', len(underweight_goats), 'Goats below target weight'])
+        
+        # Create response
+        response = make_response(output.getvalue())
+        response.headers['Content-Type'] = 'text/csv'
+        response.headers['Content-Disposition'] = f'attachment; filename=dashboard_export_{datetime.now().strftime("%Y%m%d")}.csv'
+        return response
+        
+    elif format_type == 'pdf':
+        # For PDF, redirect to a report page or show message
+        flash("PDF export functionality will be implemented soon.", "info")
+        return redirect(url_for('dashboard.dashboard_home'))
+    
+    return redirect(url_for('dashboard.dashboard_home'))
 
 @dashboard_bp.route("/setup")
 def setup():

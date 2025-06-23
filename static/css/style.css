@@ -49,6 +49,13 @@ body {
   font-weight: 600;
 }
 
+@media (min-width: 992px) { /* Only apply on desktops */
+  .navbar .dropdown:hover > .dropdown-menu {
+    display: block;
+    margin-top: 0; /* remove any unwanted gap */
+  }
+}
+
 /* Cards and Card Grid */
 .card {
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
@@ -213,3 +220,4 @@ body {
     border: 1px solid #000;
   }
 }
+
